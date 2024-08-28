@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: network-policy-eric-data-search-engine-curator
+  labels:
+     app.kubernetes.io/name: eric-data-search-engine-curator
+     chart: network-policy
+  annotations:
+     ericsson.com/product-name: "BDGS CN AM LCM"
+     ericsson.com/product-number: "CXD 111 1111"
+     ericsson.com/product-revision: "0.2.0"
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: eric-data-search-engine-curator
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-data-search-engine
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-data-search-engine-curator

@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values | get "global.bamfaultmappings" }}
+  labels:
+     app: eric-cn-app-mgmt-integration
+     chart: eric-cn-app-mgmt-integration
+  annotations:
+     ericsson.com/product-name: "BDGS CN AM LCM"
+     ericsson.com/product-number: "CXD 111 1111"
+     ericsson.com/product-revision: "0.1.0"
+data:
+{{- .Values | get "ahFmConfigmap.bamMappings" | nindent 2 }}
+{{- .Values | get "ahFmConfigmap.applicationMappings" | nindent 2 }}

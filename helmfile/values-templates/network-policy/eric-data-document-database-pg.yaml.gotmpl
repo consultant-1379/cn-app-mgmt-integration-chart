@@ -1,0 +1,40 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: network-policy-eric-data-document-database-pg
+  labels:
+     app.kubernetes.io/name: eric-data-document-database-pg
+     chart: network-policy
+  annotations:
+     ericsson.com/product-name: "BDGS CN AM LCM"
+     ericsson.com/product-number: "CXD 111 1111"
+     ericsson.com/product-revision: "0.2.0"
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: eric-data-document-database-pg
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-ctrl-bro
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-lcm-helm-executor
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-sec-access-mgmt
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-fh-alarm-handler
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-cm-mediator
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-cm-mediator-notifier
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-data-document-database-pg

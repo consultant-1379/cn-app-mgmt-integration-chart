@@ -1,0 +1,60 @@
+pipeline {
+    options {
+        disableConcurrentBuilds()
+    }
+    
+    agent {
+        node {
+            label 'am_slave'
+        }
+    }
+    
+    parameters {
+        string(name: 'GERRIT_REFSPEC', description: 'Gerrit Refspect of the integration chart git repo e.g.: refs/*')
+        string(name: 'BOB2_VERSION', defaultValue: '1.7.0-78')
+    }
+
+    environment {
+        bob2 = "docker run --rm " +
+                '--workdir "`pwd`" ' +
+                '--env JENKINS_URL=${JENKINS_URL} ' +
+                '--env JOB_NAME=${JOB_NAME} ' +
+                '--env BUILD_NUMBER=${BUILD_NUMBER} ' +
+                '--env GERRIT_USERNAME=${GERRIT_USERNAME} ' +
+                '--env GERRIT_PASSWORD=${GERRIT_PASSWORD} ' +
+                '--env CHART_REPO="OSS/com.ericsson.orchestration.mgmt/cn-app-mgmt-integration-chart" ' +
+                '-u $(id -u ${USER}):$(id -g ${USER}) ' +
+                "-v \"`pwd`:`pwd`\" " +
+                "-v /var/run/docker.sock:/var/run/docker.sock " +
+                "armdocker.rnd.ericsson.se/sandbox/adp-staging/adp-cicd/bob.2.0:${BOB2_VERSION}"
+        GERRIT_ID = 'cdbc7c5b-9a86-4074-a15e-3e6558998860'
+    }
+
+    stages {
+        stage('Clean') {
+            steps {
+                sh "${bob2} clean"
+            }
+        }
+        stage('Build Test Docker Image') {
+            steps {
+                sh "${bob2} build-test-dockerimage"
+            }
+        }
+
+        stage('Publish Test Docker Image') {
+            steps {
+                withCredentials([
+                     usernamePassword(credentialsId: "${env.GERRIT_ID}", usernameVariable: 'GERRIT_USERNAME', passwordVariable: 'GERRIT_PASSWORD'),
+                ]) {
+                    sh "${bob2} publish-test-dockerimage"
+                }
+             }
+        }
+    }
+    post {
+        always {
+            cleanWs()
+        }
+    }
+}

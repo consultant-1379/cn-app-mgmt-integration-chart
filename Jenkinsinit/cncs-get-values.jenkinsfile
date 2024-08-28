@@ -1,0 +1,44 @@
+pipeline {
+    options {
+        disableConcurrentBuilds()
+    }
+
+    agent {
+        node {
+            label 'cnam'
+        }
+    }
+
+    parameters {
+        string(name: 'INT_CHART_NAME')
+        string(name: 'INT_CHART_VERSION')
+        string(name: 'INT_CHART_REPO')
+    }
+
+    environment {
+        bob2 = "docker run --rm " +
+                '--workdir "`pwd`" ' +
+                '--env INT_CHART_NAME=${INT_CHART_NAME} ' +
+                '--env INT_CHART_VERSION=${INT_CHART_VERSION} ' +
+                '--env INT_CHART_REPO=${INT_CHART_REPO} ' +
+                '-u $(id -u ${USER}):$(id -g ${USER}) ' +
+                "-v \"`pwd`:`pwd`\" " +
+                "-v /var/run/docker.sock:/var/run/docker.sock " +
+                "armdocker.rnd.ericsson.se/sandbox/adp-staging/adp-cicd/bob.2.0:1.7.0-78"
+    }
+
+    stages {
+        stage('Init') {
+            steps {
+                  sh "${bob2} cncs_init"
+            }
+        }
+
+    }
+    post {
+        always {
+            archiveArtifacts 'artifact.properties'
+            cleanWs()
+        }
+    }
+}

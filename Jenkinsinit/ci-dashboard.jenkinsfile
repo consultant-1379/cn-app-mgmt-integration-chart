@@ -1,0 +1,70 @@
+pipeline {
+    options {
+        disableConcurrentBuilds()
+    }
+
+    agent any
+
+    parameters {
+        string(name: 'CHART_REPO', defaultValue: 'https://arm.sero.gic.ericsson.se/artifactory/proj-adp-helm-dev-generic-local/cd/sandbox/eso/ci-dashboard/')
+        string(name: 'CHART_VERSION', defaultValue: '2.0.0-33')
+        string(name: 'HELM_PIPELINE_VALUES', defaultValue: 'cnam')
+        string(name: 'NAMESPACE', defaultValue: 'ci-dashboard')
+        string(name: 'BOB2_VERSION', defaultValue: '1.7.0-78')
+        string(name: 'KUBERNETES_CONFIG_FILE_NAME', defaultValue: 'ccd-hahn117.kube.conf')
+    }
+
+    environment {
+        bob2 = "docker run --rm " +
+                '--workdir "`pwd`" ' +
+                '--env API_TOKEN=${ARM_API_TOKEN} ' +
+                '--env NAMESPACE=${NAMESPACE} ' +
+                '--env CHART_REPO=${CHART_REPO} ' +
+                '--env CHART_VERSION=${CHART_VERSION} ' +
+                '--env GERRIT_USERNAME=${GERRIT_USERNAME} ' +
+                '--env GERRIT_PASSWORD=${GERRIT_PASSWORD} ' +
+                '--env HELM_PIPELINE_VALUES=${HELM_PIPELINE_VALUES} ' +
+                '--env KUBERNETES_CONFIG_FILE_NAME=${KUBERNETES_CONFIG_FILE_NAME} ' +
+                '--env HOME=`pwd` ' +
+                "-w `pwd` " +
+                "-v \"`pwd`:`pwd`\" " +
+                "-v /var/run/docker.sock:/var/run/docker.sock " +
+                "armdocker.rnd.ericsson.se/sandbox/adp-staging/adp-cicd/bob.2.0:${BOB2_VERSION}"
+
+        ARM_API_TOKEN = credentials("cnamfid-sero-artifactory-api-token-id")
+        GERRIT_ID = 'cdbc7c5b-9a86-4074-a15e-3e6558998860'
+    }
+
+    stages {
+        stage('Init') {
+            steps {
+                 withCredentials([file(credentialsId: "${env.KUBERNETES_CONFIG_FILE_NAME}", variable: 'KUBE_CONF')]) {
+                    sh "mkdir ${env.WORKSPACE}/.kube/ ${env.WORKSPACE}/.bob/"
+                    sh "cp \$KUBE_CONF ${env.WORKSPACE}/.kube/config"
+                }
+            }
+        }
+
+        stage('Check namespace availability') {
+            steps {
+                  sh "${bob2} check-Namespace-existing"
+            }
+        }
+
+        stage('Deploy CI Dashboard') {
+            steps {
+                   withCredentials([
+                     usernamePassword(credentialsId: "${env.GERRIT_ID}", usernameVariable: 'GERRIT_USERNAME', passwordVariable: 'GERRIT_PASSWORD'),
+                   ]) {
+                         sh "${bob2} deploy-ci-dashboard"
+                      }
+            }
+        }
+    }
+
+    post {
+        always {
+               cleanWs()
+        }
+    }
+}

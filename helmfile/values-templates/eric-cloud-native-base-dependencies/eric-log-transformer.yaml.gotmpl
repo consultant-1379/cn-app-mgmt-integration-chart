@@ -1,0 +1,158 @@
+{{ if hasKey .Values "global" }}
+global:
+{{ .Values | get "global" | toYaml | indent 2 }}
+{{ end }}
+{{ if hasKey .Values .Release.Name }}
+{{ .Values | get .Release.Name | toYaml }}
+{{ end }}
+
+searchengine:
+  logplaneConfig:
+    - field: "[facility]"
+      value: "log audit"
+      newLogplane: "auditlog"
+    - field: "[extra_data][asi][log_plane]"
+      value: "alarm"
+      newLogplane: "adp-app-asi-logs"
+config:
+  adpJson:
+    filter: |
+      if ![type] or [type] == "filebeat"{
+        if [message] =~ /^\{.+\}$/ {
+          json {
+            source => "message"
+            skip_on_invalid_json => true
+          }
+        }
+        mutate {
+          rename => ["log", "message"]
+        }
+        # Parse nested json content, if it exists
+        if [message] =~ /^\{.+\}$/ {
+          json {
+            source => "message"
+            skip_on_invalid_json => true
+          }
+        }
+        #Mutation of HELM logs
+        mutate {
+          rename => ["M", "message" ]
+          rename => ["L", "severity" ]
+          rename => ["T", "timestamp" ]
+          rename => ["clientIP", "client_addr" ]
+          rename => ["reqID", "correlation_id" ]
+
+          rename => ["statusCode", "resp_code" ]
+          convert => {
+            "resp_code" => "string"
+          }
+
+          # Catalog Service logs
+          rename => ["Severity", "severity" ]
+          rename => ["LoggerName", "logger" ]
+          rename => ["Thread", "thread" ]
+          rename => ["full_message", "message" ]
+        }
+
+        # These services log in JSON, they don't need be parsed via grok plugin, only via JSON plugin.
+        if [kubernetes][container][name] in ["registry", "toscao"] {
+          mutate {
+            add_field => { "[@metadata][fully_parsed]" => "true" }
+          }
+        }
+        if [@metadata][fully_parsed] != "true" {
+          grok {
+            pattern_definitions => {
+              # If log string doesn't have data for required ADP "message" field,
+              # please, USE THIS as the last of an expression to to override logstash "message".
+              # Below in the code this empty "message" is replaced by default value.
+              "NOTHING" => '()'
+              "HTTPD_LOG_CUSTOM" => '%{IP:client_addr} %{HTTPDUSER:ident} %{HTTPDUSER:auth} \[%{HTTPDATE:request_timestamp}\] "(?:%{WORD:method} %{NOTSPACE:path}( HTTP/%{NUMBER:http_version}))" %{NUMBER:resp_code} (?:%{NUMBER:resp_size_bytes}|-)'
+              "DOCKER_REGISTRY_BASE_PATTERN" => 'time=\"%{TIMESTAMP_ISO8601:log_timestamp}\"%{SPACE}level=%{LOGLEVEL:log_severity}%{SPACE}msg=\"%{DATA:message}\"%{SPACE}go.version=%{DATA}%{SPACE}http.request.host=%{HOSTNAME:http_request_host}%{SPACE}http.request.id=%{UUID:request_id}%{SPACE}http.request.method=%{WORD:method}%{SPACE}http.request.remoteaddr=%{IP:client_addr}%{SPACE}http.request.uri=\"%{DATA:path}\"%{SPACE}http.request.useragent=\"%{DATA:user_agent}\"'
+            }
+            keep_empty_captures => true
+            overwrite => [ "message" ]
+            match => {
+              "message" => [
+                # Spring Boot logs
+                '^%{TIMESTAMP_ISO8601:log_timestamp}%{SPACE}%{LOGLEVEL:log_severity} \[%{DATA},%{DATA:correlation_id},%{DATA},%{DATA}\] %{POSINT:[metadata][proc_id]:int} --- \[%{SPACE}%{DATA:thread}\] %{NOTSPACE:logger}%{SPACE}: %{GREEDYDATA:message}$',
+                '^%{TIMESTAMP_ISO8601:log_timestamp}%{SPACE}%{LOGLEVEL:log_severity} \[%{DATA:correlation_id}\]\[%{DATA:user}\] %{POSINT:[metadata][proc_id]:int} --- \[%{SPACE}%{DATA:thread}\] %{NOTSPACE:logger}%{SPACE}: %{GREEDYDATA:message}$',
+                '^%{TIMESTAMP_ISO8601:log_timestamp}%{SPACE}%{LOGLEVEL:log_severity} %{POSINT:[metadata][proc_id]:int} --- \[%{SPACE}%{DATA:thread}\] %{NOTSPACE:logger}%{SPACE}: %{GREEDYDATA:message}$',
+                # Docker registry logs
+                '^%{HTTPD_LOG_CUSTOM}%{SPACE}\"%{DATA:http_referer_path}\"%{SPACE}\"%{DATA:user_agent}\"%{NOTHING:message}$',
+                '^%{DOCKER_REGISTRY_BASE_PATTERN}%{SPACE}http.response.contenttype=\"%{DATA:resp_content_type}\"%{SPACE}http.response.duration=%{NUMBER:resp_duration_ms:float}ms%{SPACE}http.response.status=%{NUMBER:resp_code}%{SPACE}http.response.written=%{NUMBER:resp_size_bytes}%{SPACE}$',
+                '^%{DOCKER_REGISTRY_BASE_PATTERN}%{SPACE}%{GREEDYDATA:extra_data}$',
+                # PM Server logs
+                '^level=%{LOGLEVEL:log_severity} ts=%{TIMESTAMP_ISO8601:log_timestamp} caller=%{DATA:source_file} component=%{NOTSPACE:component}( func=%{NOTSPACE:[metadata][function]})? msg="%{GREEDYDATA:message}"( %{GREEDYDATA:extra_data})?',
+                # Other Logging Formats
+                '^time=\"%{TIMESTAMP_ISO8601:log_timestamp}\" level=%{LOGLEVEL:log_severity} msg=\"%{DATA:message}\" duration=%{NUMBER:resp_duration_ms:float}ms$',
+                '^%{TIMESTAMP_ISO8601:log_timestamp} %{LOGLEVEL:log_severity} %{NOTSPACE:logger}:%{SPACE}%{GREEDYDATA:message}$'
+              ]
+            }
+          }
+        }
+        #Override "timestamp" from filebeat by timestamp from the log
+        if [log_timestamp] {
+          mutate { copy => { "log_timestamp" => "timestamp" } }
+        }
+        if [log_severity] {
+          mutate { copy => { "log_severity" => "severity" } }
+        }
+        date {
+          match => [
+            "timestamp",
+            "ISO8601", "dd/MMM/yyyy:HH:mm:ss Z", "UNIX"
+          ]
+          target => "timestamp"
+        }
+        # Add default value in ADP message if it is empty
+        if [message] == "" {
+          mutate { update => { "message" => "[event]" } }
+        }
+
+        if [service_id] == "" {
+          mutate { copy => { "[kubernetes][container][name]" => "service_id" } }
+        }
+        # Track ADP LogTransfomer config, perhaps, they will adjust mapping of these fields on their side
+        if [metadata][node_name] == "" {
+          mutate { rename => { "[kubernetes][node][name]" => "[metadata][node_name]" } }
+        }
+        if [metadata][pod_name] == "" {
+          mutate { rename => { "[kubernetes][pod][name]" => "[metadata][pod_name]" } }
+        }
+        if [metadata][pod_uid] == "" {
+          mutate { rename => { "[kubernetes][pod][uid]" => "[metadata][pod_uid]" } }
+        }
+        if [metadata][container_name] == "" {
+          mutate { rename => { "[kubernetes][container][name]" => "[metadata][container_name]" } }
+        }
+        if [metadata][namespace] == "" {
+          mutate { rename => { "[kubernetes][namespace]" => "[metadata][namespace]" } }
+        }
+        if [version] == "" {
+          mutate { add_field => { "version" => "1.0.0" } }
+        }
+
+        mutate { remove_field => [ "sequence", "@version", "time", "Time", "short_message", "level", "stream", "log_timestamp", "log_severity" ] }
+
+        #Drop message from all actuator logs
+        if [path] =~ /actuator/ {
+          drop {}
+        }
+
+        mutate { lowercase => [ "severity" ] }
+
+        translate {
+          destination => "severity"
+          override => true
+          field => "severity"
+          dictionary => {
+            "fatal"   => "critical"
+            "panic"   => "critical"
+            "warn"    => "warning"
+            "notice"  => "info"
+            "log"     => "info"
+            "trace"   => "debug"
+          }
+        }
+      }

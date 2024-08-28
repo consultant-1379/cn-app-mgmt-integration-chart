@@ -1,0 +1,15 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: eric-cn-app-mgmt-integration-deny-all
+  labels:
+     app: network-policy-deny-all
+     chart: network-policy
+  annotations:
+     ericsson.com/product-name: "BDGS CN AM LCM"
+     ericsson.com/product-number: "CXD 111 1111"
+     ericsson.com/product-revision: "0.2.0"
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress

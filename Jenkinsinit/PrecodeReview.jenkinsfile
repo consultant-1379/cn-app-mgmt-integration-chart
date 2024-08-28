@@ -1,0 +1,70 @@
+pipeline {
+    options {
+        disableConcurrentBuilds()
+    }
+
+    agent {
+           node {
+                label 'cnam'
+          }
+    }
+
+    parameters {
+        string(name: 'BOB2_VERSION', defaultValue: '1.16.0-0')
+    }
+
+    environment {
+        bob2 = 'env | egrep -v "PATH|GERRIT_REFSPEC" > ${WORKSPACE}/env_var_bob; docker run --rm ' +
+                '--env-file ${WORKSPACE}/env_var_bob -v ${WORKSPACE}/.docker/config.json:${HOME}/.docker/config.json ' +
+                '-v /var/run/docker.sock:/var/run/docker.sock -v ${PWD}:${PWD} ' +
+                '--workdir ${PWD} -u ${UID}:${GROUPS} -e HOME=${HOME} ' +
+                'armdocker.rnd.ericsson.se/proj-adp-cicd-drop/bob.2.0:${BOB2_VERSION}'
+
+        DOCKER_CONFIG = 'CNAMFID_Docker_ARM'
+        CHART_REPO = 'https://arm.sero.gic.ericsson.se/artifactory/proj-cnam-dev-helm'
+        CHART_NAME = 'eric-cn-app-mgmt-integration'
+        API_TOKEN = credentials("cnamfid-sero-artifactory-api-token-id")
+        REPOS_TOKEN = 'cnamfid-repository-tokens-file'
+    }
+
+    stages {
+        stage('Clean') {
+            steps {
+                sh "${bob2} clean"
+            }
+        }
+
+        stage('Init') {
+            steps {
+                sh "${bob2} precode_init"
+            }
+        }
+
+        stage('Helm chart validation') {
+            steps {
+                  withCredentials([file(credentialsId: "${env.REPOS_TOKEN}", variable: 'HELM_REPO_CREDENTIALS')]) {
+                     writeFile file: './.bob/.helm-repositories.yaml', text: readFile(HELM_REPO_CREDENTIALS)
+                     sh "${bob2} helm-dr-check"
+                  }
+            }
+        }
+
+        stage('Creating helm chart') {
+            steps {
+                sh "${bob2} package"
+            }
+        }
+
+        stage('Publish helm chart') {
+            steps {
+                sh "${bob2} snapshot-publish"
+            }
+        }
+    }
+    post {
+        always {
+            archiveArtifacts 'design-rule-check-report.html'
+            cleanWs()
+        }
+    }
+}

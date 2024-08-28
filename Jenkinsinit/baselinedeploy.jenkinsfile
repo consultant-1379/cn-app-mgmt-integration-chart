@@ -1,0 +1,118 @@
+pipeline {
+    options {
+        disableConcurrentBuilds()
+    }
+
+    agent {
+        node {
+            label 'cnam'
+        }
+    }
+
+    parameters {
+        string(name: 'CHART_NAME', defaultValue: 'eric-cn-app-mgmt-integration', description: 'Chart name specify')
+        string(name: 'CHART_REPO', defaultValue: 'https://arm.sero.gic.ericsson.se/artifactory/proj-bdgs-cn-app-mgmt-ci-internal-helm/', description: 'Chart repo of the triggering chart')
+        string(name: 'CHART_VERSION', description: 'Chart version e.g.: 1.0.0-1')
+        string(name: 'INT_CHART_VERSION', description: ' sent in through a jenkins artifact.properties.\n This take precedence over the parmaeter sent to the spinnaker pipeline')
+        string(name: 'INT_CHART_NAME', defaultValue: 'eric-cn-app-mgmt-integration')
+        string(name: 'INT_CHART_REPO', description: ' sent in through a jenkins artifact.properties.\n This take precedence over the parmaeter sent to the spinnaker pipeline')
+        string(name: 'GERRIT_REFSPEC', description: 'Gerrit Refspect of the integration chart git repo e.g.: refs/*')
+        string(name: 'BOB2_VERSION', defaultValue: '1.7.0-78')
+        choice(name: 'K8_ENV', choices: 'hahn117\nbbb\nccc', description: 'Choose Env')
+    }
+
+    environment {
+        bob2 = "docker run --rm " +
+                '--workdir "`pwd`" ' +
+                '--env API_TOKEN=${ARM_API_TOKEN} ' +
+                '--env NAMESPACE=${NAMESPACE} ' +
+                '--env INT_CHART_NAME=${INT_CHART_NAME} ' +
+                '--env INT_CHART_REPO=${INT_CHART_REPO} ' +
+                '--env INT_CHART_VERSION=${INT_CHART_VERSION} ' +
+                '--env GERRIT_USERNAME=${GERRIT_USERNAME} ' +
+                '--env GERRIT_PASSWORD=${GERRIT_PASSWORD} ' +
+                '--env HELM_PIPELINE_VALUES=${HELM_PIPELINE_VALUES} ' +
+                '--env KUBERNETES_CONFIG_FILE_NAME=${KUBERNETES_CONFIG_FILE_NAME} ' +
+                '--env KUBERNETES_FQDN=${KUBERNETES_FQDN} ' +
+                '--env HELMFILE_ENV_PROFILE=${HELMFILE_ENV_PROFILE} ' +
+                '--env HOME=`pwd` ' +
+                "-w `pwd` " +
+                "-v \"`pwd`:`pwd`\" " +
+                "-v /var/run/docker.sock:/var/run/docker.sock " +
+                "armdocker.rnd.ericsson.se/sandbox/adp-staging/adp-cicd/bob.2.0:${BOB2_VERSION}"
+
+        HELM_CMD = "docker run --rm -v ${env.WORKSPACE}/.kube/config:/root/.kube/config -v ${env.WORKSPACE}/helm-target:/root/.helm -v ${env.WORKSPACE}:${env.WORKSPACE} linkyard/docker-helm:2.10.0"
+        ARM_API_TOKEN = credentials("cnamfid-sero-artifactory-api-token-id")
+        GERRIT_ID = 'cdbc7c5b-9a86-4074-a15e-3e6558998860'
+        NAMESPACE = 'adp-ns-helm'
+    }
+
+    stages {
+        stage("Load environment variable") {
+             steps {
+                   script {
+                          def props = readProperties file: './Jenkinsinit/env/k8s-env/' + params.K8_ENV + '.conf'
+                          env.KUBERNETES_CONFIG_FILE_NAME = props.KUBERNETES_CONFIG_FILE_NAME
+                          env.HELM_PIPELINE_VALUES = props.HELM_PIPELINE_VALUES
+                          env.HELMFILE_ENV_PROFILE = props.HELMFILE_ENV_PROFILE
+                          env.KUBERNETES_FQDN = props.KUBERNETES_FQDN
+                    }
+             }
+        }
+
+        stage('Init') {
+            steps {
+                script {
+                    if (params.GERRIT_REFSPEC != null && params.GERRIT_REFSPEC != '') {
+                        def tokens = params.GERRIT_REFSPEC.split("/")
+                        if (tokens.length == 5) {
+                            def link = '<a href="https://gerrit.ericsson.se/#/c/' + tokens[3] + '/' + tokens[4] + '">' + tokens[3] + ',' + tokens[4] + '</a>'
+                            currentBuild.description = link
+                        } else {
+                            def link = '<a href="' + env.BUILD_NUMBER + '/console">' + params.GERRIT_REFSPEC + '</a>'
+                            currentBuild.description = link
+                        }
+                    } else {
+                        def link = '<a href="' + env.BUILD_NUMBER + '/console">' + params.CHART_NAME + ':' + params.CHART_VERSION + '</a>'
+                        currentBuild.description = link
+                    }
+                }
+                withCredentials([file(credentialsId: "${env.KUBERNETES_CONFIG_FILE_NAME}", variable: 'KUBE_CONF')]) {
+                    sh "rm -rf ${env.WORKSPACE}/.kube/ ${env.WORKSPACE}/.bob/ && mkdir ${env.WORKSPACE}/.kube/ ${env.WORKSPACE}/.bob/"
+                    sh "cp \$KUBE_CONF ${env.WORKSPACE}/.kube/config"
+                }
+            }
+        }
+
+        stage('Creating RBAC for deployment') {
+             steps {
+                   sh "${bob2} helm-RBAC-creation"
+             }
+        }
+
+        stage('Deploy Helm Chart') {
+            steps {
+                  withCredentials([
+                    usernamePassword(credentialsId: "${env.GERRIT_ID}", usernameVariable: 'GERRIT_USERNAME', passwordVariable: 'GERRIT_PASSWORD'),
+                  ]) {
+                        sh "${bob2} crd-install"
+                        sh "${bob2} deploy"
+                     }
+            }
+            post {
+                failure {
+                    sh "${bob2} logs-collector"
+                    archiveArtifacts 'logs_*.tgz'
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+               sh "${bob2} cleanup-deploy"
+               sh "${bob2} helm-RBAC-deleting || echo 'Nothing to remove'"
+               cleanWs()
+        }
+    }
+}

@@ -1,0 +1,239 @@
+#================================
+#Value for duplicate variables
+BRO_BRA_STATE: &BRO_BRA_STATE false
+storageClass: &storageClass "network-block"
+object-storage-mn-credentials: &objectStorageMnCred "eric-data-object-storage-mn"
+document-database-pg-host: &databasePgHost "eric-data-document-database-pg"
+document-database-pg-credentials: &databasePgCred "eric-data-document-database-pg-credentials"
+eric-lcm-db-user-name: &dbLcmUser "dbLcmUser"
+container_cred_id: &container_cred_id "container_cred_id"
+container_cred_pass: &container_cred_pass "container_cred_pass"
+container_url: &container_url ""
+#================================
+global:
+  iamClientSecretEnabled: false
+  networkPolicy:
+    enabled: false
+  registry:
+    imagePullPolicy: Always
+    pullSecret: regcred
+  security:
+    tls:
+      enabled: true
+  pullSecret: regcred
+  extraEnv:
+    container_cred_id: *container_cred_id
+    container_cred_pass: *container_cred_pass
+    minioAccessKey: "somestrongpassword"
+    minioSecretAccessKey: "somestrongpassword"
+    iamUsername: "keycloak"
+    iamPassword: "keycloak1"
+    ldapFederationAdminSecret: "keycloak"
+    dbCustomUser: "customuser"
+    dbCustomPassword: "custompassword"
+    dbLcmUser: *dbLcmUser
+    dbLcmPassword: "dblcmpassword"
+    dbSuperPassword: "postgres"
+    dbMetricsPassword: "metricpassword"
+    dbReplicaUser: "replicuser"
+    dbReplicaPassword: "replicpassword"
+
+eric-lcm-helm-executor:
+  enabled: true
+  release-secret:
+    name: eric-lcm-helm-executor-release-secret
+  helm-registry:
+    service: "eric-lcm-helm-chart-registry"
+    externalPort: 8080
+    name: "internal"
+    credentials:
+      kubernetesSecretName: "eric-lcm-helm-chart-registry"
+      keyForUserId: "BASIC_AUTH_USER"
+      keyForUserPw: "BASIC_AUTH_PASS"
+      username: "admin"
+  postgress:
+    service: *databasePgHost
+    dbName: "eric-exec-db"
+    credentials:
+      kubernetesSecretName: *databasePgCred
+      keyForUserId: "LcmUserKey"
+      keyForUserPw: "LcmPasswdKey"
+      keyForSuperPw: "super-pwd"
+      dbLCMUsername: *dbLcmUser
+  ingress:
+    enabled: true
+    hostname: "cnam-helm.hahn117.rnd.gic.ericsson.se"
+    port: 80
+    ingressClass:
+    tls:
+      passthrough : false
+      secretname: "eric-lcm-helm-executor-tls-secret"
+  ccr:
+    enable: false
+    hostname: "eric-ccr-server"
+
+eric-lcm-container-registry:
+  enabled: false
+  registry:
+    users:
+      secret: "container-registry-users-secret"
+      name: *container_cred_id
+      password: *container_cred_pass
+    storage:
+      s3:
+        enabled: true
+        authSecret: *objectStorageMnCred
+        authSecretMapping:
+          REGISTRY_STORAGE_S3_ACCESSKEY: accesskey
+          REGISTRY_STORAGE_S3_SECRETKEY: secretkey
+        host: eric-data-object-storage-mn
+  ingress:
+    enabled: true
+    hostname: "registry.cnam-helm.hahn117.rnd.gic.ericsson.se"
+    generateSelfSignedCerts: true
+    useHttpProxy: false
+    tls:
+      secretName: "eric-container-registry-tls-secret"
+  persistence:
+    enabled: false
+eric-lcm-helm-chart-registry:
+  enabled: true
+  env:
+    secret:
+      BASIC_AUTH_USER: "admin"
+      BASIC_AUTH_PASS: "pass"
+    s3:
+      enabled: true
+      host: "eric-data-object-storage-mn"
+    s3Secret: *objectStorageMnCred
+  persistentVolumeClaim:
+    enabled: false
+  ingress:
+    enabled: false
+eric-cloud-native-base:
+  enabled: true
+  eric-sec-access-mgmt:
+    enabled: false
+    statefulset:
+      adminSecret: "eric-sec-access-mgmt-creds"
+      userkey: "kcadminid"
+      passwdkey: "kcpasswd"
+    http:
+      hostValidation:
+        allowedHosts: "cnam-helm.hahn117.rnd.gic.ericsson.se"
+    ingress:
+      enabled: false
+      hostname: "auth.cnam-helm.hahn117.rnd.gic.ericsson.se"
+      path: /
+      tls:
+        enabled: true
+        passthrough : false
+        existingSecret: ""
+      certificates:
+        asymmetricKeyCertificateName: "oauth2-server/oauth2-server"
+    persistence:
+      dbVendor: "POSTGRES"
+      dbName: "oam-pg-db"
+      dbHost: *databasePgHost
+      dbPort: 5432
+      dbsecret: *databasePgCred
+      dbUserkey: "custom-user"
+      dbPasswdkey: "custom-pwd"
+    ldap:
+      enabled: true
+      adminSecret: "eric-sec-ldap-server-federation-secret"
+      passwdkey: "adminpass"
+      configmap: eric-sec-ldap-server-fed-conf
+      realm: "local-ldap3"
+      server: "eric-sec-ldap-server"
+      port: 636
+      scheme: "ldaps"
+    keyManagement:
+      server: "eric-sec-key-management"
+      port: 8200
+  eric-data-document-database-pg:
+    enabled: true
+    brAgent:
+      enabled: *BRO_BRA_STATE
+  eric-data-object-storage-mn:
+    enabled: true
+    credentials:
+      kubernetesSecretName: *objectStorageMnCred
+    autoEncryption:
+      enabled: false
+    brAgent:
+      enabled: *BRO_BRA_STATE
+      logLevel: "debug"
+      brLabelKey: adpbrlabelkey
+      brLabelValue: eric-data-object-storage-mn
+      backupTypeList:
+        - all-application-data
+      properties:
+        backup_data_path: "hcr-registry, cr-registry"
+  eric-data-distributed-coordinator-ed:
+    enabled: true
+    brAgent:
+      enabled: *BRO_BRA_STATE
+  eric-pm-server:
+    enabled: true
+  eric-sec-key-management:
+    enabled: true
+  eric-sec-sip-tls:
+    enabled: true
+  eric-data-search-engine:
+    enabled: false
+  eric-log-transformer:
+    enabled: false
+  eric-data-search-engine-curator:
+    enabled: false
+  eric-sec-certm:
+    enabled: false
+  eric-data-coordinator-zk:
+    enabled: true
+  eric-data-message-bus-kf:
+    enabled: true
+    replicaCount: 3
+    imagePullPolicy: "IfNotPresent"
+    persistentVolumeClaim:
+      enabled: false
+    persistence:
+      persistentVolumeClaim:
+        size: "5Gi"
+        enabled: true
+    readynessProbeTimeoutSeconds: 10
+    service:
+       endpoints:
+         messagebuskf:
+            sasl:
+               enforced: "required"
+            tls:
+               enforced: "required"
+               verifyClientCertificate: "required"
+               servcertTimeToLive: 3600
+               servcertRenewalLeadTime: 3000
+         dataCoordinator:
+            tls:
+               enforced: "required"
+               clientTimeToLive: 3600
+               clientRenewalLeadTime: 3000
+    security:
+      tls:
+        messagebuskf:
+          port: 9093
+          provider: "sip-tls"
+  eric-cm-mediator:
+    enabled: false
+  eric-fh-alarm-handler:
+    enabled: false
+    imageCredentials:
+      repoPathKafka: "proj-adp-message-bus-kf-drop"
+  eric-ctrl-bro:
+    enabled: *BRO_BRA_STATE
+eric-cm-yang-provider:
+  enabled: false
+eric-sec-ldap-server:
+  enabled: false
+eric-cnom-server:
+  enabled: false
+eric-cnom-document-database-mg:
+  enabled: false

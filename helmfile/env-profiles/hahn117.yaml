@@ -1,0 +1,851 @@
+#================================
+#Value for duplicate variables
+BRO_BRA_STATE: &BRO_BRA_STATE true
+storageClass: &storageClass "network-block"
+object-storage-mn-credentials: &objectStorageMnCred "eric-data-object-storage-mn"
+document-database-pg-host: &databasePgHost "eric-data-document-database-pg"
+document-database-pg-credentials: &databasePgCred "eric-data-document-database-pg-credentials"
+eric-lcm-db-user-name: &dbLcmUser "dbLcmUser"
+container_cred_id: &container_cred_id "container_cred_id"
+container_cred_pass: &container_cred_pass "container_cred_pass"
+container_url: &container_url "registry.cnam-helmfile.hahn117.rnd.gic.ericsson.se"
+#================================
+global:
+  bamfaultmappings: eric-bss-bam-integration-faultmappings
+  timezone: UTC
+  ericsson:
+    licensing:
+      licenseDomains:
+        - productType: "BAM"
+          swltId: "BAMTargetId"
+          customerId: "123456789"
+  security:
+    tls:
+      enabled: false
+  iamClientSecretEnabled: false
+  networkPolicy:
+    enabled: true
+  registry:
+    imagePullPolicy: "Always"
+    pullSecret: "regcred"
+  pullSecret: "regcred"
+  default:
+    timeout: 900
+    wait: true
+  app:
+    enabled: true
+    namespace: cnam-helmfiles-stage
+  extraEnv:
+    container_cred_id: *container_cred_id
+    container_cred_pass: *container_cred_pass
+    minioAccessKey: "somestrongpassword"
+    minioSecretAccessKey: "somestrongpassword"
+    iamUsername: "keycloak"
+    iamPassword: "REPLACE@123PaSSWORD"
+    ldapFederationAdminSecret: "keycloak"
+    dbCustomUser: "customuser"
+    dbCustomPassword: "custompassword"
+    dbLcmUser: *dbLcmUser
+    dbLcmPassword: "dblcmpassword"
+    dbSuperPassword: "superpassword"
+    dbMetricsPassword: "metricpassword"
+    dbReplicaUser: "replicuser"
+    dbReplicaPassword: "replicpassword"
+  imagePullSecret:
+    secretname: specifysecretname
+    registry: specifyservername
+    username: specifyusernamename
+    password: specifyusernpassword
+  adpBR:
+    brLabelKey: adpbrlabelkey
+
+rstate: RSTATE
+
+nameOverride: ""
+fullnameOverride: ""
+
+eric-lcm-helm-executor:
+  enabled: true
+  replicaCount: 1
+  release-secret:
+    name: eric-lcm-helm-executor-release-secret
+  networkPolicy:
+    enabled: true
+  ingress:
+    enabled: true
+    hostname: "cnam-helmfile.hahn117.rnd.gic.ericsson.se"
+    path: /
+    ingressClass: ""
+    port: 80
+  container-registry:
+    url: *container_url
+    credentials:
+      kubernetesSecretName: "eric-lcm-helm-executor-container-creds"
+      keyForUserId: "container_cred_id"
+      keyForUserPw: "container_cred_pass"
+  helm-registry:
+    service: "eric-lcm-helm-chart-registry"
+    externalPort: 8080
+    name: "internal"
+    credentials:
+      kubernetesSecretName: "eric-lcm-helm-chart-registry"
+      keyForUserId: "BASIC_AUTH_USER"
+      keyForUserPw: "BASIC_AUTH_PASS"
+      username: "admin"
+  postgress:
+    service: *databasePgHost
+    dbName: "eric-exec-db"
+    credentials:
+      kubernetesSecretName: *databasePgCred
+      keyForUserId: "LcmUserKey"
+      keyForUserPw: "LcmPasswdKey"
+      keyForSuperPw: "super-pwd"
+      dbLCMUsername: *dbLcmUser
+  imageCredentials:
+    lcm-helm-executor:
+      pullSecret: "regcred"
+      registry:
+        url: "armdocker.rnd.ericsson.se"
+        imagePullPolicy: "IfNotPresent"
+      repoPath: "proj-ra-cnam"
+
+eric-sec-ldap-server:
+  enabled: true
+  federation:
+    adminSecret: "eric-sec-ldap-server-federation-secret"
+    passwdkey: "adminpass"
+
+ahFmConfigmap:
+  bamMappings: |
+    eric-sec-certm.json: |
+      [
+          {
+              "faultName": "CertMCertificateToExpire",
+              "vendor": 193,
+              "code": 9699329,
+              "defaultDescription": "The certificate will expire in <x> days and should be renewed to prevent service failure",
+              "defaultExpiration": 1800,
+              "defaultSeverity": "Warning",
+              "probableCause": 351,
+              "category": "ProcessingErrorAlarm",
+              "specificProblem": "Certificate Management, Certificate is about to Expire"
+          },
+            {
+                "faultName": "CertMTrustedCertificateToExpire",
+                "vendor": 193,
+                "code": 9699330,
+                "defaultDescription": "The trusted certificate will expire in <x> days and should be renewed to prevent service failure",
+                "defaultExpiration": 1800,
+                "defaultSeverity": "Warning",
+                "probableCause": 351,
+                "category": "ProcessingErrorAlarm",
+                "specificProblem": "Certificate Management, Trusted Certificate is about to Expire"
+            },
+            {
+                "faultName": "CertMAutomaticEnrollmentFailed",
+                "vendor": 193,
+                "code": 9699331,
+                "defaultDescription": "Automatic certificate renewal failed due to local misconfiguration or remote enrollment service denial",
+                "defaultExpiration": 1800,
+                "defaultSeverity": "Warning",
+                "probableCause": 307,
+                "category": "ProcessingErrorAlarm",
+                "specificProblem": "Certificate Management, Automatic Enrollment Failed"
+            }
+        ]
+    adp_gs_internal_ca.json: |
+        [
+            {
+                "faultName": "InternalCertificateCreationFailure",
+                "vendor": 193,
+                "code": 10223617,
+                "defaultSeverity": "Critical",
+                "probableCause": 158,
+                "defaultDescription": "Internal Certificates Cannot be Issued",
+                "specificProblem": "Internal CA, Internal Certificate Creation Failure",
+                "category": "ProcessingErrorAlarm"
+            }
+        ]
+    eric-bss-bam-secret-monitor.json: |
+        [
+          {
+              "faultName": "CertificateExpiryTimeAlarm",
+              "defaultSeverity": "Warning",
+              "defaultDescription": "Certificate will be expired soon",
+              "specificProblem": "CertificateExpiryTimeAlarm, Certificate Expiry Time Alarm",
+              "probableCause": 351,
+              "vendor": 193,
+              "code": 11075585,
+              "category": "ProcessingErrorAlarm"
+          }
+        ]
+  applicationMappings: |
+    eric-bss-ref-tpg.json: |
+        [
+          {
+            "faultName": "Cil_Processing_Exception_Notification",
+            "code": 1769504,
+            "defaultSeverity": "Critical",
+            "defaultDescription": "No Cil Cluster available",
+            "specificProblem": "No CIL cluster is available to process the request",
+            "category": "ProcessingErrorAlarm"
+          },
+          {
+            "faultName": "Http_Traffic_Enabled_Alarm",
+            "code": 1769502,
+            "defaultSeverity": "Warning",
+            "defaultDescription": "HTTP traffic is enable",
+            "specificProblem": "HTTP traffic is enabled",
+            "category": "ProcessingErrorAlarm"
+          },
+          {
+            "faultName": "Invalid_System_Default_Language_Alarm",
+            "code": 1769507,
+            "defaultSeverity": "Major",
+            "defaultDescription": "System lanague is not available",
+            "specificProblem": "System lanaguge is not available",
+            "category": "ProcessingErrorAlarm"
+          },
+          {
+            "faultName": "Ref_App_Sample_Alarm",
+            "code": 1769509,
+            "defaultSeverity": "Minor",
+            "defaultDescription": "Reference alarm",
+            "specificProblem": "Reference alarm",
+            "category": "ProcessingErrorAlarm"
+          }
+        ]
+    eric-bss-coba.json: |
+        [
+          {
+            "faultName": "COBAHeapThresholdExceeded",
+            "code": 1769514,
+            "defaultSeverity": "Critical",
+            "probableCause": 547,
+            "defaultDescription": "Heap usage warning threshold exceeded",
+            "specificProblem": "Heap usage is above 50% of total heap memory available",
+            "category": "ProcessingErrorAlarm"
+          }
+        ]
+
+eric-cnom-server:
+  enabled: false
+  imageCredentials:
+    pullSecret: "regcred"
+  ingress:
+    enabled: false
+    certificates:
+      enabled: false
+  searchEngine:
+    tls:
+      enabled: false
+  features:
+    statusOverview: true
+    alarmViewer: true
+    centralConfigurationRepository: true
+    logViewer: true
+    nrfProvisionUeGroupProfile: false
+    nrfProvisionUeIndividualProfile: false
+    nrfProvisionNfProfile: false
+    nrfProvisionNrfAddress: false
+    nssfProvision: false
+
+eric-cnom-document-database-mg:
+  enabled: false
+  imageCredentials:
+    pullPolicy: Always
+    registry:
+      pullSecret: regcred
+
+eric-lcm-container-registry:
+  enabled: false
+  ingress:
+    enabled: true
+    useHttpProxy: false
+    hostname: *container_url
+    generateSelfSignedCerts: false
+    tls:
+      secretName: "eric-container-registry-tls-secret"
+  registry:
+    metrics:
+      enabled: true
+    users:
+      secret: "container-registry-users-secret"
+      name: *container_cred_id
+      password: *container_cred_pass
+    storage:
+      s3:
+        enabled: false
+        authSecret: *objectStorageMnCred
+        host: "eric-data-object-storage-mn"
+  persistence:
+    enabled: false
+  brAgent:
+    enabled: *BRO_BRA_STATE
+  resources:
+    registry:
+      requests:
+        memory: 128Mi
+        cpu: 50m
+      limits:
+        memory: 1280Mi
+        cpu: 500m
+    sidecar:
+      requests:
+        memory: 64Mi
+        cpu: 150m
+      limits:
+        memory: 640Mi
+        cpu: 750m
+    init:
+      requests:
+        memory: 64Mi
+        cpu: 50m
+      limits:
+        memory: 128Mi
+        cpu: 100m
+
+eric-lcm-helm-chart-registry:
+  enabled: true
+  env:
+    secret:
+      BASIC_AUTH_USER: "admin"
+      BASIC_AUTH_PASS: "pass"
+    s3:
+      enabled: false
+      host: "eric-data-object-storage-mn"
+    s3Secret: *objectStorageMnCred
+  persistentVolumeClaim:
+    enabled: false
+  ingress:
+    enabled: false
+  brAgent:
+    enabled: *BRO_BRA_STATE
+  resources:
+    registry:
+      requests:
+        memory: 128Mi
+        cpu: 50m
+      limits:
+        memory: 640Mi
+        cpu: 250m
+    sidecar:
+      requests:
+        memory: 64Mi
+        cpu: 150m
+      limits:
+        memory: 640Mi
+        cpu: 750m
+    init:
+      requests:
+        memory: 64Mi
+        cpu: 50m
+      limits:
+        memory: 128Mi
+        cpu: 100m
+
+eric-cloud-native-base:
+  enabled: true
+  eric-ctrl-bro:
+    enabled: *BRO_BRA_STATE
+    kafka:
+      enabled: false
+    persistence:
+      persistentVolumeClaim:
+        storageClassName: *storageClass
+        size: "15Gi"
+    bro:
+      enableNotifications: true
+      enableAgentDiscovery: true
+    service:
+      endpoints:
+        broToAgent:
+          tls:
+            enforced: optional
+            verifyClientCertificate: optional
+        restActions:
+          tls:
+            enforced: optional
+
+  eric-data-coordinator-zk:
+    enabled: true
+    replicaCount: 1
+    imagePullPolicy: "IfNotPresent"
+    heap: "128M"
+    persistantVolumeClaim:
+      enabled: false
+    persistence:
+      persistentVolumeClaim:
+        storageClassName: *storageClass
+        enabled: true
+    brAgent:
+      enabled: *BRO_BRA_STATE
+    resources:
+      datacoordinatorzk:
+        requests:
+          cpu: "1"
+          memory: "2Gi"
+        limits:
+          cpu: "2"
+          memory: "4Gi"
+          ephemeral-storage: "5Gi"
+
+  eric-data-distributed-coordinator-ed:
+    enabled: true
+    secret:
+      name: "eric-data-distributed-coordinator-creds"
+      value: "REPLACEPASSWD"
+    pods:
+      dced:
+        replicaCount: 1
+    updateStrategy:
+      type: "RollingUpdate"
+    imagePullPolicy: "IfNotPresent"
+    persistence:
+      persistentVolumeClaim:
+        size: "1Gi"
+        storageClassName: *storageClass
+        enabled: true
+    resources:
+      etcd:
+        requests:
+          cpu: "400m"
+          memory: "400Mi"
+        limits:
+          cpu: "1"
+          memory: "1Gi"
+      brAgent:
+        limits:
+          cpu: "1"
+          memory: "2Gi"
+        requests:
+          cpu: "400m"
+          memory: "400Mi"
+    brAgent:
+      enabled: *BRO_BRA_STATE
+      brLabelValue: eric-data-distributed-coordinator-ed-bra
+      logLevel: "debug"
+      properties:
+        applicationProperties: |-
+          dced.agent.restore.type=overwrite
+          dced.excluded.paths=/shelter,/kms/core/lock
+
+  eric-data-document-database-pg:
+    enabled: true
+    postgresDatabase: "oam-pg-db"
+    credentials:
+      kubernetesSecretName: *databasePgCred
+      keyForUserId: "custom-user"
+      keyForUserPw: "custom-pwd"
+      keyForSuperPw: "super-pwd"
+      keyForMetricsPw: "metrics-pwd"
+      keyForReplicaId: "replica-user"
+      keyForReplicaPw: "replica-pwd"
+    highAvailability:
+      synchronousModeEnabled: false
+      replicaCount: 1
+    persistentVolumeClaim:
+      storageClassName: *storageClass
+    brAgent:
+      enabled: *BRO_BRA_STATE
+      logicalDBBackupEnable: false
+      backupDataModelConfig: "eric-data-document-database-pg-brm-conf"
+      backupTypeList:
+        - default-db
+        - executor-db
+      RootLogLevel: "debug"
+      PGAgentLogLevel: "debug"
+
+  eric-data-message-bus-kf:
+    enabled: true
+    replicaCount: 1
+    imagePullPolicy: "IfNotPresent"
+    persistentVolumeClaim:
+      enabled: false
+    persistence:
+      persistentVolumeClaim:
+        size: "5Gi"
+        storageClassName: *storageClass
+        enabled: true
+    readynessProbeTimeoutSeconds: 10
+    configurationOverrides:
+      ssl.enabled.protocols: "TLSv1.2"
+    service:
+       endpoints:
+         messagebuskf:
+            sasl:
+               enforced: "optional"
+            tls:
+               enforced: "optional"
+               verifyClientCertificate: "optional"
+               servcertTimeToLive: 3600
+               servcertRenewalLeadTime: 3000
+         dataCoordinator:
+            tls:
+               enforced: "optional"
+               clientTimeToLive: 3600
+               clientRenewalLeadTime: 3000
+    security:
+      tls:
+        messagebuskf:
+          port: 9093
+          provider: "sip-tls"
+
+  eric-data-object-storage-mn:
+    enabled: false
+    credentials:
+      kubernetesSecretName: *objectStorageMnCred
+    autoEncryption:
+      enabled: false
+    brAgent:
+      enabled: *BRO_BRA_STATE
+      logLevel: "debug"
+      brLabelKey: adpbrlabelkey
+      brLabelValue: eric-data-object-storage-mn
+      backupTypeList:
+        - all-application-data
+      properties:
+        backup_data_path: "cr-registry, hcr-registry"
+      tls:
+        paths:
+          clientCerts: /etc/tls/cert/client
+
+  eric-cm-mediator:
+    enabled: true
+    replicaCount: 1
+    updateStrategy:
+      type: "RollingUpdate"
+      rollingUpdate:
+        maxUnavailable: "50%"
+        maxSurge: "50%"
+    cmkey:
+      enable: true
+    backend:
+      dbname: "oam-pg-db"
+      hostname: *databasePgHost
+    kafka:
+      hostname: "eric-data-message-bus-kf"
+    credentials:
+      kubernetesSecretName: *databasePgCred
+      keyForUserId: "custom-user"
+      keyForUserPw: "custom-pwd"
+    service:
+      type: "ClusterIP"
+
+  eric-log-transformer:
+    enabled: true
+    searchengine:
+      host: "eric-data-search-engine"
+      port: 9200
+      logplaneConfig:
+        - field: "[facility]"
+          value: "log audit"
+          newLogplane: "auditlog"
+        - field: "[extra_data][asi][log_plane]"
+          value: "alarm"
+          newLogplane: "adp-app-asi-logs"
+    replicaCount: 1
+    updateStrategy:
+      rollingUpdate:
+        maxSurge: "25%"
+        maxUnavailable: "25%"
+      type: "RollingUpdate"
+    imageCredentials:
+      pullPolicy: "IfNotPresent"
+    logLevel: "error"
+    resources:
+      logtransformer:
+        requests:
+          cpu: "250m"
+          memory: "2048Mi"
+        limits:
+          cpu: "500m"
+          memory: "2048Mi"
+    jvmHeap: "1596m"
+    config:
+      adpJson:
+        transformation:
+          enabled: true
+
+  eric-pm-server:
+    enabled: true
+    rbac:
+      appMonitoring:
+        configFileCreate: true
+        enabled: true
+    server:
+      baseURL: "metrics/viewer/"
+      prefixURL: "metrics/viewer/"
+      persistentVolume:
+        enabled: true
+        storageClass: *storageClass
+    resources:
+      server:
+        requests:
+          cpu: "250m"
+          memory: "512Mi"
+        limits:
+          cpu: "2"
+          memory: "2048Mi"
+    service:
+      endpoints:
+        scrapeTargets:
+          tls:
+            enforced: "optional"
+        reverseproxy:
+          tls:
+            verifyClientCertificate: "optional"
+    config:
+      recording_rules: {}
+
+  eric-sec-access-mgmt:
+    enabled: true
+    statefulset:
+      adminSecret: "eric-sec-access-mgmt-creds"
+      userkey: "kcadminid"
+      passwdkey: "kcpasswd"
+    http:
+      hostValidation:
+        allowedHosts: "cnam-helmfile.hahn117.rnd.gic.ericsson.se"
+    ingress:
+      enabled: false
+      hostname: "auth.cnam-helmfile.hahn117.rnd.gic.ericsson.se"
+      path: /
+      tls:
+        enabled: true
+        passthrough : false
+        existingSecret: ""
+      certificates:
+        asymmetricKeyCertificateName: "oauth2-server/oauth2-server"
+    persistence:
+      dbVendor: "POSTGRES"
+      dbName: "oam-pg-db"
+      dbHost: *databasePgHost
+      dbPort: 5432
+      dbsecret: *databasePgCred
+      dbUserkey: "custom-user"
+      dbPasswdkey: "custom-pwd"
+    ldap:
+      enabled: true
+      adminSecret: "eric-sec-ldap-server-federation-secret"
+      passwdkey: "adminpass"
+      configmap: eric-sec-ldap-server-fed-conf
+      realm: "local-ldap3"
+      server: "eric-sec-ldap-server"
+      port: 636
+      scheme: "ldaps"
+    keyManagement:
+      server: "eric-sec-key-management"
+      port: 8200
+
+  eric-sec-certm:
+    enabled: true
+    imageCredentials:
+      pullSecret: "regcred"
+
+  eric-sec-key-management:
+    enabled: true
+    replicas: 1
+    updateStrategy:
+      type: "RollingUpdate"
+    imageCredentials:
+      registry:
+        imagePullPolicy: "IfNotPresent"
+    persistence:
+      type: "etcd"
+      etcd:
+        tls:
+          enabled: true
+    service:
+      tls:
+        enabled: true
+    shelter:
+      enabled: true
+    resources:
+      vault:
+        requests:
+          cpu: "100m"
+          memory: "400Mi"
+        limits:
+          cpu: "300m"
+          memory: "1200Mi"
+
+  eric-sec-sip-tls:
+    enabled: true
+    updateStrategy:
+      type: "RollingUpdate"
+    logLevel: "info"
+    etcd:
+      hostname: "eric-data-distributed-coordinator-ed"
+    kafka:
+      hostname: "eric-data-message-bus-kf"
+      port: 9093
+      tls:
+        enabled: true
+        verifyHostname: true
+    replicaCount: 1
+    resources:
+      sip:
+        limits:
+          cpu: "3000m"
+          memory: "400Mi"
+        requests:
+          cpu: "100m"
+          memory: "200Mi"
+    imageCredentials:
+      registry:
+        imagePullPolicy: IfNotPresent
+    keyManagement:
+      serviceAccountNameForCredentials: eric-sec-key-management-admin
+      hostname: eric-sec-key-management
+      port: 8210
+
+  eric-data-search-engine:
+    enabled: true
+    autoSetRequiredWorkerNodeSysctl: true
+    storage:
+      repository:
+        enabled: true
+        storageClass: *storageClass
+        storageAllocation: "30Gi"
+    imageCredentials:
+      searchengine:
+        repoPath: "proj-adp-log-drop"
+        registry:
+          imagePullPolicy: "Always"
+          url: "armdocker.rnd.ericsson.se"
+    persistence:
+      storageClass: *storageClass
+      data:
+        persistentVolumeClaim:
+          size: "20Gi"
+          storageClassName: *storageClass
+      backup:
+        persistentVolumeClaim:
+          size: "30Gi"
+          storageClassName: *storageClass
+      master:
+        persistentVolumeClaim:
+          storageClassName: *storageClass
+    replicaCount:
+      ingest: 1
+      master: 1
+      data: 1
+    resources:
+      bragent:
+        limits:
+          cpu: "500m"
+          memory: "1Gi"
+        requests:
+          cpu: "500m"
+          memory: "1Gi"
+      data:
+        limits:
+          cpu: "500m"
+          memory: "2Gi"
+        requests:
+          cpu: "500m"
+          memory: "2Gi"
+      ingest:
+        limits:
+          cpu: "500m"
+          memory: "1Gi"
+        requests:
+          cpu: "500m"
+          memory: "1Gi"
+      master:
+        limits:
+          cpu: "500m"
+          memory: "1Gi"
+        requests:
+          cpu: "500m"
+          memory: "1Gi"
+
+  eric-data-search-engine-curator:
+    enabled: true
+    imageCredentials:
+      curator:
+        repoPath: "proj-adp-log-drop"
+        registry:
+          imagePullPolicy: "Always"
+          url: "armdocker.rnd.ericsson.se"
+    cronjob:
+      curator:
+        enabled: true
+        schedule: "0 1 * * *"
+        successfulJobHistoryLimit: "1"
+        failedJobHistoryLimit: "3"
+    actions: |
+      1:
+        action: delete_indices
+        description: Remove logs older than 2 day
+        options:
+          disable_action: false
+          ignore_empty_list: true
+        filters:
+        - filtertype: age
+          source: name
+          direction: older
+          timestring: '%Y.%m.%d'
+          unit: days
+          unit_count: 2
+
+  eric-fh-alarm-handler:
+    enabled: false
+    replicaCount: 1
+    updateStrategy:
+      type: "RollingUpdate"
+      rollingUpdate:
+        maxUnavailable: "50%"
+        maxSurge: "50%"
+    alarmhandler:
+      configStore: "cmm"
+      configmap:
+        faultmappings: "eric-bss-bam-integration-faultmappings"
+      logFormat: "adpjson"
+      jobs:
+        createAHTopics: true
+        overrideTopicConfig: true
+      fi:
+        topic:
+          replicationFactor: 1
+      asi:
+        topic:
+          partitions: 1
+          replicationFactor: 1
+    backend:
+      type: "postgres"
+      hostname: *databasePgHost
+      dbname: "oam-pg-db"
+    credentials:
+      kubernetesSecretName: *databasePgCred
+      keyForUserId: "custom-user"
+      keyForUserPw: "custom-pwd"
+    imageCredentials:
+      registry:
+        pullSecret: "regcred"
+      repoPathKafka: "proj-adp-message-bus-kf-drop"
+    redis:
+      asi:
+        writerEnabled: false
+      acl:
+        enabled: false
+    images:
+      eric-fh-alarm-handler:
+        name: "eric-fh-alarm-handler"
+      topic-creator:
+        name: "eric-fh-alarm-handler-topic-creator"
+      logshipper:
+        name: "eric-log-shipper"
+      ericsecoauthsap:
+        name: "eric-sec-authorization-proxy-oauth2-sap"
+      ericsecoauthproxy:
+        name: "eric-sec-authorization-proxy-oauth2"
+    resources:
+      alarmhandler:
+        requests:
+          cpu: "250m"
+          memory: "384Mi"
+        limits:
+          cpu: "500m"
+          memory: "512Mi"

@@ -1,0 +1,30 @@
+{{- if index .Values "eric-lcm-container-registry" "enabled" }}
+{{- if .Values.global -}}
+{{- if .Values.global.networkPolicy -}}
+{{- if .Values.global.networkPolicy.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "eric-cn-app-mgmt-integration.name" . }}-eric-lcm-container-registry
+  labels:
+    {{- include "eric-cn-app-mgmt-integration.labels" . | nindent 4 }}
+  annotations:
+    {{- include "eric-cn-app-mgmt-integration.product-info" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: eric-lcm-container-registry
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-ctrl-bro
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-lcm-container-registry
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

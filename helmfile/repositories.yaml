@@ -1,0 +1,29 @@
+repositories:
+  - name: adp
+    url: https://arm.sero.gic.ericsson.se/artifactory/proj-adp-gs-all-helm
+    username: {{ env "GERRIT_USERNAME" }}
+    password: {{ env "GERRIT_PASSWORD" }}
+  - name: cn-app
+    url: https://arm.sero.gic.ericsson.se/artifactory/proj-bdgs-cn-app-mgmt-drop-helm
+    username: {{ env "GERRIT_USERNAME" }}
+    password: {{ env "GERRIT_PASSWORD" }}
+  - name: adp-dosmn
+    url: https://arm.sero.gic.ericsson.se/artifactory/proj-adp-eric-data-object-storage-mn-drop-helm
+    username: {{ env "GERRIT_USERNAME" }}
+    password: {{ env "GERRIT_PASSWORD" }}
+  - name: adp-cncs
+    url: https://arm.sero.gic.ericsson.se/artifactory/proj-adp-umbrella-released-helm/
+    username: {{ env "GERRIT_USERNAME" }}
+    password: {{ env "GERRIT_PASSWORD" }}
+  - name: gs-released
+    url: https://arm.sero.gic.ericsson.se/artifactory/proj-adp-gs-released-helm
+    username: {{ env "GERRIT_USERNAME" }}
+    password: {{ env "GERRIT_PASSWORD" }}
+  - name: pc-rs-rel
+    url: https://arm.sero.gic.ericsson.se/artifactory/proj-pc-rs-released-helm
+    username: {{ env "GERRIT_USERNAME" }}
+    password: {{ env "GERRIT_PASSWORD" }}
+  - name: pc-rel
+    url: https://arm.sero.gic.ericsson.se/artifactory/proj-pc-released-helm/
+    username: {{ env "GERRIT_USERNAME" }}
+    password: {{ env "GERRIT_PASSWORD" }}

@@ -1,0 +1,159 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: eric-sec-access-mgmt-creds
+type: Opaque
+data:
+  pguserid: Y3VzdG9tbmFtZQo=
+  pgpasswd: Y3VzdG9tcHdkCg==
+  kcadminid: YWRtaW4K
+  kcpasswd: UkVQTEFDRUAxMjNQYVNTV09SRA==
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: eric-data-distributed-coordinator-creds
+type: Opaque
+data:
+  etcdpasswd: UkVQTEFDRVBBU1NXT1JECg==
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: eric-data-document-database-pg-credentials
+type: Opaque
+data:
+  custom-pwd: Y3VzdG9tcHdk
+  custom-user: Y3VzdG9tbmFtZQ==
+  metrics-pwd: bWV0cmljc3B3ZA==
+  replica-pwd: cmVwbGljYXB3ZA==
+  replica-user: cmVwbGljYXVzZXI=
+  super-pwd: c3VwZXJwd2Q=
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: eric-bss-bam-integration-faultmappings
+data:
+  adp_gs_internal_ca.json: |
+    [
+        {
+            "faultName": "InternalCertificateCreationFailure",
+            "vendor": 193,
+            "code": 10223617,
+            "defaultSeverity": "Critical",
+            "probableCause": 158,
+            "defaultDescription": "Internal Certificates Cannot be Issued",
+            "specificProblem": "Internal CA, Internal Certificate Creation Failure",
+            "category": "ProcessingErrorAlarm"
+        }
+    ]
+  eric-bss-bam-secret-monitor.json: |
+    [
+      {
+          "faultName": "CertificateExpiryTimeAlarm",
+          "defaultSeverity": "Warning",
+          "defaultDescription": "Certificate will be expired soon",
+          "specificProblem": "CertificateExpiryTimeAlarm, Certificate Expiry Time Alarm",
+          "probableCause": 351,
+          "vendor": 193,
+          "code": 11075585,
+          "category": "ProcessingErrorAlarm"
+      }
+    ]
+  eric-bss-coba.json: |
+    [
+      {
+        "faultName": "COBAHeapThresholdExceeded",
+        "code": 1769514,
+        "defaultSeverity": "Critical",
+        "probableCause": 547,
+        "defaultDescription": "Heap usage warning threshold exceeded",
+        "specificProblem": "Heap usage is above 50% of total heap memory available",
+        "category": "ProcessingErrorAlarm"
+      }
+    ]
+  eric-bss-ref-tpg.json: |
+    [
+      {
+        "faultName": "Cil_Processing_Exception_Notification",
+        "code": 1769504,
+        "defaultSeverity": "Critical",
+        "defaultDescription": "No Cil Cluster available",
+        "specificProblem": "No CIL cluster is available to process the request",
+        "category": "ProcessingErrorAlarm"
+      },
+      {
+        "faultName": "Http_Traffic_Enabled_Alarm",
+        "code": 1769502,
+        "defaultSeverity": "Warning",
+        "defaultDescription": "HTTP traffic is enable",
+        "specificProblem": "HTTP traffic is enabled",
+        "category": "ProcessingErrorAlarm"
+      },
+      {
+        "faultName": "Invalid_System_Default_Language_Alarm",
+        "code": 1769507,
+        "defaultSeverity": "Major",
+        "defaultDescription": "System lanague is not available",
+        "specificProblem": "System lanaguge is not available",
+        "category": "ProcessingErrorAlarm"
+      },
+      {
+        "faultName": "Ref_App_Sample_Alarm",
+        "code": 1769509,
+        "defaultSeverity": "Minor",
+        "defaultDescription": "Reference alarm",
+        "specificProblem": "Reference alarm",
+        "category": "ProcessingErrorAlarm"
+      }
+    ]
+  eric-lcm-helm-executor.json: |
+    [
+      {
+        "faultName": "CCRNotRespondAlarm",
+        "vendor": 193,
+        "code": 16252929,
+        "createAlarm": true,
+        "defaultSeverity": "Critical",
+        "defaultDescription": "CCR Service does not respond",
+        "specificProblem": "CCR Service does not respond",
+        "category": "ProcessingErrorAlarm"
+      }
+    ]
+  eric-sec-certm.json: |
+    [
+        {
+            "faultName": "CertMCertificateToExpire",
+            "vendor": 193,
+            "code": 9699329,
+            "defaultDescription": "The certificate will expire in <x> days and should be renewed to prevent service failure",
+            "defaultExpiration": 1800,
+            "defaultSeverity": "Warning",
+            "probableCause": 351,
+            "category": "ProcessingErrorAlarm",
+            "specificProblem": "Certificate Management, Certificate is about to Expire"
+        },
+          {
+              "faultName": "CertMTrustedCertificateToExpire",
+              "vendor": 193,
+              "code": 9699330,
+              "defaultDescription": "The trusted certificate will expire in <x> days and should be renewed to prevent service failure",
+              "defaultExpiration": 1800,
+              "defaultSeverity": "Warning",
+              "probableCause": 351,
+              "category": "ProcessingErrorAlarm",
+              "specificProblem": "Certificate Management, Trusted Certificate is about to Expire"
+          },
+          {
+              "faultName": "CertMAutomaticEnrollmentFailed",
+              "vendor": 193,
+              "code": 9699331,
+              "defaultDescription": "Automatic certificate renewal failed due to local misconfiguration or remote enrollment service denial",
+              "defaultExpiration": 1800,
+              "defaultSeverity": "Warning",
+              "probableCause": 307,
+              "category": "ProcessingErrorAlarm",
+              "specificProblem": "Certificate Management, Automatic Enrollment Failed"
+          }
+      ]

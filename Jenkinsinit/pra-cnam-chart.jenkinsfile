@@ -1,0 +1,104 @@
+pipeline {
+    options {
+        disableConcurrentBuilds()
+    }
+
+    agent {
+        node {
+            label 'cnam'
+        }
+    }
+
+    parameters {
+        string(name: 'CHART_NAME' )
+        string(name: 'CHART_REPO' )
+        string(name: 'CHART_VERSION' )
+        string(name: 'GERRIT_REFSPEC' )
+    }
+
+    environment {
+        bob2 = "docker run --rm " +
+                '--workdir "`pwd`" ' +
+                '--env JENKINS_URL=${JENKINS_URL} ' +
+                '--env API_TOKEN=${API_TOKEN} ' +
+                '--env JOB_NAME=${JOB_NAME} ' +
+                '--env BUILD_NUMBER=${BUILD_NUMBER} ' +
+                '--env GERRIT_USERNAME=${GERRIT_USERNAME} ' +
+                '--env GERRIT_PASSWORD=${GERRIT_PASSWORD} ' +
+                '--env CHART_NAME=${CHART_NAME} ' +
+                '--env CHART_VERSION=${CHART_VERSION} ' +
+                '--env CHART_REPO=${CHART_REPO} ' +
+                '--env CHART_PATH=${CHART_PATH} ' +
+                '--env GIT_TAG_STATUS=${GIT_TAG_STATUS} ' +
+                '-u $(id -u ${USER}):$(id -g ${USER}) ' +
+                "-v \"`pwd`:`pwd`\" " +
+                "-v /var/run/docker.sock:/var/run/docker.sock " +
+                "armdocker.rnd.ericsson.se/sandbox/adp-staging/adp-cicd/bob.2.0:${BOB2_VERSION}"
+
+        CHART_PATH = 'eric-cn-app-mgmt-integration'
+        GIT_TAG_STATUS = 'true'
+        BOB2_VERSION = '1.7.0-78'
+        GERRIT_ID = 'cdbc7c5b-9a86-4074-a15e-3e6558998860'
+        REPOS_TOKEN = 'cnamfid-repository-tokens-file'
+        API_TOKEN = 'cnamfid-sero-artifactory-api-token-id'
+    }
+
+    stages {
+        stage('Init') {
+            steps {
+                withCredentials([
+                     usernamePassword(credentialsId: "${env.GERRIT_ID}", usernameVariable: 'GERRIT_USERNAME', passwordVariable: 'GERRIT_PASSWORD'),
+                     file(credentialsId: "${env.REPOS_TOKEN}", variable: 'HELM_REPO_CREDENTIALS'),
+                     string(credentialsId: "${env.API_TOKEN}", variable: 'API_TOKEN')
+                ]) {
+                script {
+                    if (params.GERRIT_REFSPEC != null && params.GERRIT_REFSPEC != '') {
+                        def tokens = params.GERRIT_REFSPEC.split("/")
+                        if (tokens.length == 5) {
+                            def link = '<a href="https://gerrit.ericsson.se/#/c/' + tokens[3] + '/' + tokens[4] + '">' + tokens[3] + ',' + tokens[4] + '</a>'
+                            currentBuild.description = link
+                        } else {
+                            def link = '<a href="' + env.BUILD_NUMBER + '/console">' + params.GERRIT_REFSPEC + '</a>'
+                            currentBuild.description = link
+                        }
+                    } else {
+                        def link = '<a href="' + env.BUILD_NUMBER + '/console">' + params.CHART_NAME + ':' + params.CHART_VERSION + '</a>'
+                        currentBuild.description = link
+                    }
+                }
+                sh "rm -rf ${env.WORKSPACE}/.kube/ ${env.WORKSPACE}/.bob/ && mkdir ${env.WORKSPACE}/.kube/ ${env.WORKSPACE}/.bob/"
+                sh '''
+                   curl -u ${GERRIT_USERNAME}:${GERRIT_PASSWORD} -X POST https://arm.sero.gic.ericsson.se/artifactory/api/search/aql -H "content-type: text/plain" -d 'items.find({"repo": {"$eq":"proj-bdgs-cn-app-mgmt-released-helm-local"}, "name":{"$match":"eric-cn-app-mgmt-integration*"}}).sort({"$desc": ["created"]}).limit(1)' 2>/dev/null | grep name | awk -F '-' '{print $6}' | sed 's/.tgz",//' > ${WORKSPACE}/.bob/var.version
+                   '''
+               }
+            }
+        }
+
+        stage('Generating PRA for CNAM ') {
+            steps {
+                withCredentials([
+                     usernamePassword(credentialsId: "${env.GERRIT_ID}", usernameVariable: 'GERRIT_USERNAME', passwordVariable: 'GERRIT_PASSWORD'),
+                     file(credentialsId: "${env.REPOS_TOKEN}", variable: 'HELM_REPO_CREDENTIALS'),
+                     string(credentialsId: "${env.API_TOKEN}", variable: 'API_TOKEN')
+                ]) {
+                   script {
+                        if (params.CHART_VERSION.contains('+') || params.CHART_NAME.contains('eric-lcm-helm-executor')){
+                           sh "cp \$HELM_REPO_CREDENTIALS .bob/.helm-repositories.yaml"
+                           sh "${bob2} release-pra"
+                        } else {
+                                 echo "This release does not PRA."
+                                 echo "Skipping..."
+                               }
+                   }
+                }
+            }
+        }
+
+    }
+    post {
+        always {
+            cleanWs()
+        }
+    }
+}
+

@@ -1,0 +1,17 @@
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+### VS Code ###
+.vscode/
+### BOB Temporary Files/Folders ###
+.bob/
+/build/
+*helm-target
+helmdrck_temp_*
+# HELM files
+*.tgz
+*.lock
+**/charts/*
+**/test-output/*

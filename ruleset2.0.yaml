@@ -1,0 +1,453 @@
+modelVersion: 2.0
+
+docker-images:
+  - adp-release-auto: armdocker.rnd.ericsson.se/proj-adp-cicd-drop/bob-adp-release-auto:1.0.0-864
+  - helm-dr-check: armdocker.rnd.ericsson.se/proj-adp-cicd-drop/adp-helm-dr-checker:latest
+  - adp-helm-install: armdocker.rnd.ericsson.se/proj-adp-cicd-drop/bob-py3kubehelmbuilder:latest
+  - va_defensics: armdocker.rnd.ericsson.se/proj-adp-cicd-drop/defensics.cbo:latest
+  - anchore-inline-image: armdocker.rnd.ericsson.se/proj-adp-cicd-drop/anchore-inline-scan:latest
+  - trivy-inline-scan: armdocker.rnd.ericsson.se/proj-adp-cicd-drop/trivy-inline-scan:latest
+  - adp-int-helm-chart-auto: armdocker.rnd.ericsson.se/proj-adp-cicd-drop/adp-int-helm-chart-auto:latest
+  - acceptance-test-image: armdocker.rnd.ericsson.se/proj-ra-cnam/acceptance-test-image:latest
+
+properties:
+  - kube-config-path: .kube/config
+  - image-registry-name: armdocker.rnd.ericsson.se
+  - test-image-path: proj-ra-cnam
+  - test-image-name: acceptance-test-image
+  - crd-namespace: eric-crd
+  - kubectl_version: "1.27.6"
+  - helm_version: "v3.10.3"
+  - helmfile_version: "v0.147.0"
+  - helm-diff_version: "v3.5.0"
+  - helm-chart-name-component: eric-lcm-helm-executor
+  - helm-chart-name: eric-cn-app-mgmt-integration
+  - helm-chart-repo: https://arm.sero.gic.ericsson.se/artifactory/proj-bdgs-cn-app-mgmt-ci-internal-helm
+  - helm-chart-dev-repo: https://arm.sero.gic.ericsson.se/artifactory/proj-bdgs-cn-app-mgmt-drop-helm
+  - helm-chart-rel-repo: https://arm.sero.gic.ericsson.se/artifactory/proj-bdgs-cn-app-mgmt-released-helm
+  - packages-local-repo: https://arm.sero.gic.ericsson.se/artifactory/proj-eric-lcm-helm-executor-artifacts-generic-local/packages
+  - helm-plugins-local-repo: https://arm.sero.gic.ericsson.se/artifactory/proj-eric-lcm-helm-executor-artifacts-generic-local/plugins
+  - git-repo-url: https://gerrit.ericsson.se/a/OSS/com.ericsson.orchestration.mgmt/cn-app-mgmt-integration-chart
+  - skipped-design-rules: "-DhelmDesignRule.config.DR-D1121-001=skip -DhelmDesignRule.config.DR-D1125-002=skip -DhelmDesignRule.config.DR-D1125-001=skip -DhelmDesignRule.config.DR-D1123-111=skip -DhelmDesignRule.config.DR-D1123-123=skip -DhelmDesignRule.config.DR-D1120-055-AD=skip -DhelmDesignRule.config.DR-D1123-124=skip -DhelmDesignRule.config.DR-D1124-100=skip -DhelmDesignRule.config.DR-D1121-068=skip"
+  - ccr-skipped-design-rules: "-DhelmDesignRule.config.DR-D1125-006=skip -DhelmDesignRule.config.DR-D1120-010=skip -DhelmDesignRule.config.DR-D1125-013=skip -DhelmDesignRule.config.DR-D1120-025=skip -DhelmDesignRule.config.DR-D1121-064=skip -DhelmDesignRule.config.DR-D1123-115=skip -DhelmDesignRule.config.DR-D1121-120=skip -DhelmDesignRule.config.DR-D1123-120=skip -DhelmDesignRule.config.DR-D1121-121=skip -DhelmDesignRule.config.DR-D1121-144=skip -DhelmDesignRule.config.DR-D1121-145=skip -DhelmDesignRule.config.DR-D1123-121=skip -DhelmDesignRule.config.DR-D1121-101=skip"
+  - default-docker-flags: "--net=host
+                           --env KUBECTL_VERSION=${kubectl_version}
+                           --env CHART_NAME=${env.CHART_NAME}
+                           --env CHART_REPO=${env.CHART_REPO}
+                           --env CHART_PATH=${env.CHART_PATH}
+                           --env CHART_VERSION=${env.CHART_VERSION}
+                           --env GERRIT_REFSPEC
+                           --env GERRIT_USERNAME=${env.GERRIT_USERNAME}
+                           --env GERRIT_PASSWORD=${env.GERRIT_PASSWORD}
+                           --env GIT_BRANCH=master
+                           --env ARM_API_TOKEN=${env.API_TOKEN}
+                           --env GIT_REPO_URL=${git-repo-url}
+                           --env HELM_INTERNAL_REPO=${helm-chart-repo}
+                           --env HELM_DROP_REPO=${helm-chart-dev-repo}
+                           --env HELM_RELEASED_REPO=${helm-chart-rel-repo}
+                           --env ALLOW_DOWNGRADE=true
+                           --env IGNORE_NON_RELEASED=false
+                           --env AUTOMATIC_RELEASE=false
+                           --env ALWAYS_RELEASE=false
+                           --env SKIP_HELMFILE_REPO_UPDATE=true
+                           --env SKIP_COND
+                           --env UPLOAD_INTERNAL
+                           --env SOURCE=\"${env.JENKINS_URL}/job/${env.JOB_NAME}/${env.BUILD_NUMBER}\"
+                           --env GERRIT_TOPIC=inca
+                           --env HELM_REPO_CREDENTIALS=.bob/.helm-repositories.yaml
+                          "
+var:
+  - skip-helmdrck-rules
+  - chart-version
+  - commithash
+  - deployment-name
+  - version
+  - version-prefix: VERSION_PREFIX
+  - list-of-images
+  - va_docker_image
+
+env:
+  - API_TOKEN
+  - BACKUP_DIRECTORY
+  - BACKUP_DURATION_REPORT_FILE
+  - BACKUP_SIZE_REPORT_FILE
+  - BASE_HELMFILE
+  - BUILD_NUMBER
+  - CHART_NAME
+  - CHART_PATH
+  - CHART_REPO
+  - CHART_VERSION
+  - DEPLOYMENT_TYPE (default=upgrade)
+  - ENABLE_HELM_V3 (default='true')
+  - GERRIT_PASSWORD
+  - GERRIT_REFSPEC
+  - GERRIT_USERNAME
+  - GIT_TAG_STATUS
+  - HELM_PIPELINE_VALUES
+  - HELM_TIMEOUT (default=1800s)
+  - HELM_USER
+  - HELMFILE_ENV_PROFILE
+  - HOME
+  - INT_CHART_NAME
+  - INT_CHART_REPO
+  - INT_CHART_VERSION
+  - JENKINS_URL
+  - JOB_NAME
+  - KUBERNETES_FQDN
+  - NAMESPACE
+  - PWD
+  - VA_TEST_VALUES_FILE_PATH (default=Jenkinsinit/va_test_values.yaml)
+  - XRAY_APIKEY (default=n2mVkP2AhK2SB#6c)
+  - XRAY_USER (default=cnamadm100)
+
+rules:
+
+  release:
+    - rule: release_init
+    - rule: package
+    - rule: release-publish
+  release-pra:
+    - rule: pra-init
+    - rule: package
+    - rule: pra-release-publish
+  deploy:
+    - rule: set-deployment-name
+    - rule: deploy-chart
+  cleanup-deploy:
+    - rule: remove-installed-release
+
+  clean:
+    - task: rm
+      docker-image: adp-release-auto
+      cmd:
+        - rm -rf .bob/ .kube/
+
+  precode_init:
+    - task: gen-version
+      cmd:
+        - echo ${var.version-prefix}-$(git log -1 --pretty=format:'%h') > .bob/var.version
+    - task: commit
+      docker-image: adp-release-auto
+      cmd: git rev-parse --short HEAD > .bob/var.commithash
+    - task: adp-artifacts-properties
+      docker-image: adp-release-auto
+      cmd:
+        - generate-adp-artifacts
+          --chart-name ${helm-chart-name}
+          --chart-version ${var.version}
+          --chart-repo ${helm-chart-repo}
+    - task: git-properties
+      cmd:
+        - echo "GIT_TAG=$(git log -1 --pretty=format:'%h')" >> artifact.properties
+        - echo "GIT_COMMIT_AUTHOR=$(git log -1 --pretty=format:'%an')" >> artifact.properties
+        - echo "GIT_AUTHOR_EMAIL=$(git log -1 --pretty=format:'%ae')" >> artifact.properties
+        - echo "GIT_COMMIT_SUMMARY=$(git log -1 --pretty=format:'%s')" >> artifact.properties
+
+  release_init:
+    - task: gen-version
+      cmd:
+        - echo ${var.version-prefix}-${env.BUILD_NUMBER} > .bob/var.version
+    - task: commit
+      docker-image: adp-release-auto
+      cmd: git rev-parse --short HEAD > .bob/var.commithash
+    - task: adp-artifacts-properties
+      docker-image: adp-release-auto
+      cmd:
+        - generate-adp-artifacts
+          --chart-name ${helm-chart-name}
+          --chart-version ${var.version-prefix}-${env.BUILD_NUMBER}
+          --chart-repo ${helm-chart-repo}
+    - task: git-properties
+      cmd:
+        - echo "GIT_TAG=${var.version-prefix}-${env.BUILD_NUMBER}" >> artifact.properties
+        - echo "GIT_COMMIT_AUTHOR=$(git log -1 --pretty=format:'%an')" >> artifact.properties
+        - echo "GIT_AUTHOR_EMAIL=$(git log -1 --pretty=format:'%ae')" >> artifact.properties
+        - echo "GIT_COMMIT_SUMMARY=$(git log -1 --pretty=format:'%s')" >> artifact.properties
+
+  cncs_init:
+    - task: get_values
+      cmd:
+        - echo "CHART_NAME=${env.INT_CHART_NAME}" >> artifact.properties
+        - echo "CHART_VERSION=${env.INT_CHART_VERSION}" >> artifact.properties
+        - echo "CHART_REPO=${env.INT_CHART_REPO}" >> artifact.properties
+
+  pra-init:
+    - task: gen-version
+      cmd: echo $(awk -F '+' '{print $1"+"$2+1}' ${env.PWD}/.bob/var.version) > ${env.PWD}/.bob/var.version
+
+  set-deployment-name:
+    - task: generate
+      cmd: bash -c '
+          if [[ ${env.DEPLOYMENT_TYPE} == "upgrade" ]]; then
+            echo "${helm-chart-name}-${env.NAMESPACE}" > .bob/var.deployment-name;
+          else
+              if [[ ${env.ENABLE_HELM_V3} == "true" ]]; then
+                  echo "${helm-chart-name}-${env.NAMESPACE}" > .bob/var.deployment-name;
+              else
+                  echo "--name ${helm-chart-name}-${env.NAMESPACE}" > .bob/var.deployment-name;
+              fi
+          fi'
+
+  deploy-chart:
+    - task: deploy-cncs
+      docker-image: adp-helm-install
+      cmd:
+        - /bin/bash -c '
+          kubectl create ns ${env.NAMESPACE}
+            --kubeconfig ${env.PWD}/${kube-config-path} &&
+          kubectl create secret docker-registry regcred 
+            --docker-server=armdocker.rnd.ericsson.se
+            --docker-username=${env.GERRIT_USERNAME}
+            --docker-password=${env.GERRIT_PASSWORD}
+            --namespace=${env.NAMESPACE}
+            --kubeconfig ${env.PWD}/${kube-config-path} &&
+          kubectl apply
+            -f ${env.PWD}/prerequisite/prerequisite-items.yaml
+            --namespace=${env.NAMESPACE}
+            --kubeconfig ${env.PWD}/${kube-config-path} &&
+          helm repo add cncs-repo https://arm.sero.gic.ericsson.se/artifactory/proj-adp-umbrella-released-helm
+            --username ${env.GERRIT_USERNAME}
+            --password ${env.GERRIT_PASSWORD} &&
+          helm pull cncs-repo/eric-cloud-native-base -d ${env.PWD}/.bob/ &&
+          helm upgrade --install cncs-release ${env.PWD}/.bob/eric-cloud-native-*
+            --wait
+            --timeout 1200s
+            --namespace ${env.NAMESPACE}
+            --kubeconfig ${env.PWD}/${kube-config-path}
+            --debug
+            --values ${env.PWD}/prerequisite/values.yaml
+            --set global.security.tls.enabled=false
+            --set global.pullSecret=regcred
+            --set global.imagePullSecret.registry=armdocker.rnd.ericsson.se'
+    - task: deploy-chart
+      docker-image: adp-helm-install
+      cmd: helm ${env.DEPLOYMENT_TYPE} --install ${var.deployment-name}
+        --wait --timeout ${env.HELM_TIMEOUT}
+        --create-namespace
+        --namespace ${env.NAMESPACE}
+        --values ./Jenkinsinit/env/helm-env/universal.yaml
+        --set global.pullSecret=regcred
+        --set global.imagePullSecret.registry=armdocker.rnd.ericsson.se
+        --set global.imagePullSecret.username=${env.GERRIT_USERNAME}
+        --set global.imagePullSecret.password=${env.GERRIT_PASSWORD}
+        --set eric-lcm-helm-executor.ingress.hostname="executor-api.${env.NAMESPACE}.${env.KUBERNETES_FQDN}"
+        --set eric-lcm-helm-executor.container-registry.url="docker-registry.${env.NAMESPACE}.${env.KUBERNETES_FQDN}"
+        --set eric-lcm-container-registry.ingress.hostname="docker-registry.${env.NAMESPACE}.${env.KUBERNETES_FQDN}"
+        --kubeconfig ${env.PWD}/${kube-config-path}
+        --debug
+        ${env.INT_CHART_REPO}/${env.INT_CHART_NAME}/${env.INT_CHART_NAME}-${env.INT_CHART_VERSION}.tgz
+
+  remove-installed-release:
+    - task: remove-helm3-release-chart
+      docker-image: adp-helm-install
+      docker-flags:
+        - --env KUBECTL_VERSION=${kubectl_version}
+      cmd: /bin/bash -c "kubectl delete namespace ${env.NAMESPACE} --kubeconfig ${kube-config-path}"
+
+  logs-collector:
+    - task: collect-logs
+      docker-image: adp-helm-install
+      cmd: /bin/bash -c "mkdir ~/.kube/ && cp ${env.PWD}/${kube-config-path} ~/.kube/ && /bin/bash Jenkinsinit/scripts/collect_adp_logs.sh ${env.NAMESPACE}"
+
+  helm-dr-check:
+      - task: dr-check
+        docker-image: helm-dr-check
+        cmd: helm-dr-check
+             --helm-chart ./${helm-chart-name}
+             --output ./ ${skipped-design-rules} ${ccr-skipped-design-rules}
+             --helm-v3
+             -Dhelmdrck.credential.file.path=${env.PWD}/.bob/.helm-repositories.yaml; exit 0
+
+  package:
+    - task: helm-package
+      docker-image: adp-release-auto
+      docker-flags:
+          - "--env ENABLE_HELM_V3=${env.ENABLE_HELM_V3}"
+      cmd: helm-package
+        --folder ${helm-chart-name}
+        --version ${var.version}
+        --helm-credentials ${env.PWD}/.bob/.helm-repositories.yaml
+
+  snapshot-publish:
+    - task: helm-upload
+      docker-image: adp-release-auto
+      docker-flags:
+        - --network host
+      cmd: upload_file.sh
+        --filename=.bob/${helm-chart-name}-${var.version}.tgz
+        --repository=${helm-chart-repo}/${helm-chart-name}/
+        --api-token=${env.API_TOKEN}
+
+  release-publish:
+    - task: helm-upload
+      docker-image: adp-release-auto
+      docker-flags:
+        - --network host
+      cmd: upload_file.sh
+        --filename=.bob/${helm-chart-name}-${var.version}.tgz
+        --repository=${helm-chart-dev-repo}/${helm-chart-name}/
+        --api-token=${env.API_TOKEN}
+
+  pra-release-publish:
+    - task: helm-upload
+      docker-image: adp-release-auto
+      docker-flags:
+        - --network host
+      cmd: upload_file.sh
+        --filename=.bob/${helm-chart-name}-${var.version}.tgz
+        --repository=${helm-chart-rel-repo}/${helm-chart-name}/
+        --api-token=${env.API_TOKEN}
+
+  prepare:
+    - task: prepare stage
+      docker-image: adp-int-helm-chart-auto
+      docker-flags:
+        - ${default-docker-flags}
+        - --env UPDATE_APP_VERSION=true
+        - --env ADD_NEW_HELMFILE_REPO=false
+      cmd:
+        - ihc-auto prepare
+
+  publish:
+    - task: publish stage
+      docker-image: adp-int-helm-chart-auto
+      docker-flags:
+        - ${default-docker-flags}
+        - --env GIT_TAG_ENABLED=${env.GIT_TAG_STATUS}
+      cmd: ihc-auto publish
+
+  adp-helmfile-deploy:
+    - task: prerequisite-install
+      cmd:
+        - /bin/bash -c 'wget ${helm-plugins-local-repo}/helm-diff/${helm-diff_version}/helm-diff-linux-amd64.tgz --directory-prefix=${env.PWD}/.bob/
+                        && tar -xf ${env.PWD}/.bob/helm-diff-linux-amd64.tgz -C ${env.PWD}/.bob/'
+        - /bin/bash -c 'yes | cp ${env.PWD}/.bob/${helm-chart-name}-helmfile_tmp/${helm-chart-name}-helmfile/${env.BASE_HELMFILE} ${env.PWD}/${env.CHART_PATH}/${env.BASE_HELMFILE}'
+    - task: deploy-chart
+      docker-image: adp-int-helm-chart-auto
+      docker-flags:
+        - --env HELM_PLUGINS="${env.PWD}/.bob/"
+        - --env HELM_PATH_CONFIG="${env.PWD}/.bob/"
+        - --env KUBECONFIG="${env.PWD}/${kube-config-path}"
+        - --env GERRIT_USERNAME="${env.GERRIT_USERNAME}"
+        - --env GERRIT_PASSWORD="${env.GERRIT_PASSWORD}"
+      cmd: /bin/bash -c '
+                        helmfile
+                          -f ${env.PWD}/${env.CHART_PATH}/${env.BASE_HELMFILE}
+                          --state-values-set global.app.namespace=${env.NAMESPACE}
+                          --state-values-set global.pullSecret=regcred
+                          --state-values-set global.imagePullSecret.registry=armdocker.rnd.ericsson.se
+                          --state-values-set global.imagePullSecret.username=${env.GERRIT_USERNAME}
+                          --state-values-set global.imagePullSecret.password=${env.GERRIT_PASSWORD}
+                          --state-values-set eric-sec-access-mgmt.ingress.hostname="${env.NAMESPACE}.keycloack.${env.KUBERNETES_FQDN}"
+                          --state-values-set eric-lcm-helm-executor.ingress.hostname="${env.NAMESPACE}.executor-api.${env.KUBERNETES_FQDN}"
+                          --state-values-set eric-lcm-helm-executor.container-registry.url="${env.NAMESPACE}.docker-registry.${env.KUBERNETES_FQDN}"
+                          --state-values-set eric-lcm-helm-executor.helm-registry.url="https://${env.NAMESPACE}.helm-registry.${env.KUBERNETES_FQDN}"
+                          --state-values-set eric-lcm-container-registry.ingress.hostname="${env.NAMESPACE}.docker-registry.${env.KUBERNETES_FQDN}"
+                          --state-values-set eric-lcm-helm-chart-registry.ingress.hostname="${env.NAMESPACE}.helm-registry.${env.KUBERNETES_FQDN}"
+                          --debug
+                          apply
+                        '
+
+  helmfile-deploy:
+    - task: prerequisite-install
+      docker-image: acceptance-test-image
+      cmd:
+        - /bin/bash -c 'wget ${packages-local-repo}/helmfile/${helmfile_version}/helmfile_${helmfile_version}_linux_amd64.tar.gz --directory-prefix=${env.PWD}/.bob/
+                        && tar -xf ${env.PWD}/.bob/helmfile_${helmfile_version}_linux_amd64.tar.gz -C ${env.PWD}/.bob/'
+        - /bin/bash -c 'wget ${helm-plugins-local-repo}/helm-diff/${helm-diff_version}/helm-diff-linux-amd64.tgz --directory-prefix=${env.PWD}/.bob/
+                        && tar -xf ${env.PWD}/.bob/helm-diff-linux-amd64.tgz -C ${env.PWD}/.bob/'
+    - task: deploy-chart
+      docker-image: acceptance-test-image
+      docker-flags:
+        - --env HELM_PLUGINS="${env.PWD}/.bob/"
+        - --env KUBECONFIG="${env.PWD}/${kube-config-path}"
+        - --env GERRIT_USERNAME="${env.GERRIT_USERNAME}"
+        - --env GERRIT_PASSWORD="${env.GERRIT_PASSWORD}"
+        - --env HOME=${HOME}
+      cmd: /bin/bash -c '
+                        ${env.PWD}/.bob/helmfile
+                          -f ${env.PWD}/helmfile/${env.BASE_HELMFILE}
+                          -e ${env.HELMFILE_ENV_PROFILE}
+                          --state-values-set global.app.namespace=${env.NAMESPACE}
+                          --state-values-set global.pullSecret=regcred
+                          --state-values-set global.imagePullSecret.registry=armdocker.rnd.ericsson.se
+                          --state-values-set global.imagePullSecret.username=${env.GERRIT_USERNAME}
+                          --state-values-set global.imagePullSecret.password=${env.GERRIT_PASSWORD}
+                          --state-values-set eric-sec-access-mgmt.ingress.hostname=helmfile-auth.cnam.${env.KUBERNETES_FQDN}
+                          --state-values-set eric-lcm-container-registry.ingress.generateSelfSignedCerts=true
+                          --debug
+                          apply
+                        '
+
+  deploy-ci-dashboard:
+    - task: prerequisite-install
+      docker-image: adp-helm-install
+      cmd: /bin/bash -c 'sed -i s/CIUSERNAME/${env.GERRIT_USERNAME}/ ${env.PWD}/ci-dashboard/configurations/${env.HELM_PIPELINE_VALUES}.yaml
+                           && sed -i s/CIUSERPASSWORD/${env.GERRIT_PASSWORD}/ ${env.PWD}/ci-dashboard/configurations/${env.HELM_PIPELINE_VALUES}.yaml'
+    - task: deploy-dashboard
+      docker-image: adp-helm-install
+      docker-flags:
+        - --env KUBECONFIG="${env.PWD}/${kube-config-path}"
+      cmd: /bin/bash -c 'helm repo add ${env.NAMESPACE} ${env.CHART_REPO}
+                         && helm upgrade
+                            --install --debug --wait --timeout 300s
+                            --values ${env.PWD}/ci-dashboard/configurations/${env.HELM_PIPELINE_VALUES}.yaml
+                            --namespace ${env.NAMESPACE}
+                            --version ${env.CHART_VERSION}
+                            ${env.NAMESPACE} ${env.NAMESPACE}/ci-dashboard'
+
+  build-test-dockerimage:
+    - task: build-test-dockerimage
+      cmd: docker build ${env.PWD}/
+        -f ${env.PWD}/Dockerfiles/Dockerfile-acceptance-test-image
+        --tag ${image-registry-name}/${test-image-path}/${test-image-name}:latest
+        --build-arg REPOSITORY=${env.CHART_REPO}
+        --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') 
+        --build-arg HELM_VERSION=${helm_version}
+
+  publish-test-dockerimage:
+    - task: docker push acceptance-test-image
+      cmd: export DOCKER_CONFIG=${env.PWD}/.bob/.docker &&
+           docker login --username=${env.GERRIT_USERNAME} --password=${env.GERRIT_PASSWORD} ${image-registry-name} &&
+           docker push ${image-registry-name}/${test-image-path}/${test-image-name}:latest
+    - task: docker-images-cleanup
+      cmd: docker rmi ${image-registry-name}/${test-image-path}/${test-image-name}:latest
+
+  helm-RBAC-creation:
+    - task: create cluster role binding
+      docker-image: adp-helm-install
+      docker-flags:
+        - --env KUBECTL_VERSION=${kubectl_version}
+      cmd: /bin/bash -c 'if kubectl get clusterrolebinding ${env.NAMESPACE} --kubeconfig ${env.PWD}/${kube-config-path};
+                           then echo "clusterrolebinding ${env.NAMESPACE} already exist";
+                         else
+                           kubectl --kubeconfig ${kube-config-path} create clusterrolebinding ${env.NAMESPACE} --clusterrole=cluster-admin --serviceaccount=${env.NAMESPACE}:${helm-chart-name-component};
+                         fi;'
+
+  helm-RBAC-deleting:
+    - task: delete cluster role binding
+      docker-image: adp-helm-install
+      docker-flags:
+        - --env KUBECTL_VERSION=${kubectl_version}
+      cmd: kubectl --kubeconfig ${kube-config-path} delete clusterrolebinding ${env.NAMESPACE}
+
+  crd-install:
+    - task: install eric-sec-certm-crd
+      docker-image: adp-helm-install
+      docker-flags:
+        - --env KUBECTL_VERSION=${kubectl_version}
+      cmd: 
+        - /bin/bash -c 'if kubectl get CustomResourceDefinition externalcertificates.com.ericsson.sec.certm --kubeconfig ${env.PWD}/${kube-config-path};
+                         then echo "eric-sec-certm-crd already exist";
+                       else
+                         helm repo add crd-repo https://arm.sero.gic.ericsson.se/artifactory/proj-adp-gs-all-helm &&
+                         helm pull crd-repo/eric-sec-certm-crd &&
+                         helm install eric-sec-certm-crd ./eric-sec-certm-crd-* -n ${crd-namespace} --create-namespace --debug --kubeconfig ${env.PWD}/${kube-config-path};
+                       fi;'
+        - /bin/bash -c 'if kubectl get CustomResourceDefinition "internalcertificates.siptls.sec.ericsson.com" --kubeconfig ${env.PWD}/${kube-config-path};
+                         then echo "eric-sec-sip-tls-crd already exist";
+                       else
+                         helm repo add crd-repo https://arm.sero.gic.ericsson.se/artifactory/proj-adp-gs-all-helm &&
+                         helm pull crd-repo/eric-sec-sip-tls-crd &&
+                         helm install eric-sec-sip-tls-crd eric-sec-sip-tls-crd-* -n ${crd-namespace} --create-namespace --debug --kubeconfig ${env.PWD}/${kube-config-path};
+                       fi;'

@@ -1,0 +1,188 @@
+pipeline {
+    options {
+        disableConcurrentBuilds()
+    }
+
+    agent {
+        node {
+            label 'cnam'
+        }
+    }
+
+    environment {
+        bob2 = "docker run --rm " +
+                '--workdir "`pwd`" ' +
+                '--env IS_RELEASE=${IS_RELEASE} ' +
+                '--env HELM_USER=${HELM_USERNAME} ' +
+                '--env API_TOKEN=${ARM_API_TOKEN} ' +
+                '--env HELM_PIPELINE_VALUES=${HELM_PIPELINE_VALUES} ' +
+                '--env KUBERNETES_CONFIG_FILE_NAME=${KUBERNETES_CONFIG_FILE_NAME} ' +
+                "-v ${env.WORKSPACE}/.docker/dockerconfig.json:/root/.docker/config.json " +
+                "-w `pwd` " +
+                "-v \"`pwd`:`pwd`\" " +
+                "-v /var/run/docker.sock:/var/run/docker.sock " +
+                "armdocker.rnd.ericsson.se/sandbox/adp-staging/adp-cicd/bob.2.0:${BOB2_VERSION}"
+
+        CHART_REPO = 'https://arm.seli.gic.ericsson.se/artifactory/proj-cnam-dev-helm'
+        CHART_NAME = 'eric-cnam-integration'
+        ARM_API_TOKEN = credentials("cnamfid-sero-artifactory-api-token-id")
+        HELM_USERNAME = "cnamfid"
+        BOB2_VERSION = "1.7.0-5"
+        DOCKER_REPO = 'sekadocker.epk.ericsson.se/proj-cnam/'
+    }
+
+    stages {
+        stage('Clean') {
+            steps {
+                sh "${bob2} clean"
+            }
+        }
+
+        stage('Vulnerability Analysis - ZAP Web Security Scan') {
+            when {
+                expression { "${params.VA_ZAP}" == "true" }
+            }
+            steps {
+                sh '''
+                      echo "CHART_VERSION=$(grep version eric-cnam-integration/Chart.yaml | awk -F': ' '{print $2}')" > artifact.properties
+                   '''
+                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                    configFileProvider([configFile(fileId: "${env.KUBERNETES_CONFIG_FILE_NAME}", targetLocation: "${env.WORKSPACE}/.kube/config")]) {
+                        sh "${bob2} zap-scan"
+                    }
+                }
+                archiveArtifacts 'zap/reports/**.*'
+            }
+        }
+
+        stage('Vulnerability Analysis - Defensics Vulnerability Checker') {
+            when {
+                expression { "${params.VA_DEFENSICS}" == "true" }
+            }
+            steps {
+                sh "mkdir Defensics"
+                sh "${bob2} fuzz-scan"
+                archiveArtifacts 'Defensics/*'
+
+            }
+        }
+
+        stage('Vulnerability Analysis - NMAP Port Scan') {
+            when {
+                expression { "${params.VA_NMAP}" == "true" }
+            }
+            steps {
+                configFileProvider([configFile(fileId: "${env.KUBERNETES_CONFIG_FILE_NAME}", targetLocation: "${env.WORKSPACE}/.kube/config")]) {
+                    sh "${bob2} nmap-scan"
+                }
+                archiveArtifacts 'nmap_reports/nmap_report/*'
+            }
+        }
+
+        stage('Create report.config for XRAY') {
+            when {
+                expression { "${params.VA_XRAY}" == "true" }
+            }
+            steps {
+                script {
+                    image_list = readYaml(file: 'eric-cnam-integration/requirements.yaml')
+                    report_config = readFile "Jenkinsinit/xray/report.config"
+                    for (item in 0..5) {
+                        def image = image_list.dependencies.getAt(item).name.toString() + ':' + image_list.dependencies.getAt(item).version.toString()
+                        regex = 'IMAGE' + item
+                        report_config = report_config.replaceAll("${regex}", "${image}")
+                    }
+                    writeFile file: "Jenkinsinit/xray/report.config", text: report_config
+                }
+            }
+        }
+
+        stage('Vulnerability Analysis - XRAY Report Fetcher') {
+            when {
+                expression { "${params.VA_XRAY}" == "true" }
+            }
+            steps {
+                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                    sh '''
+                      echo "CHART_VERSION=$(grep version eric-cnam-integration/Chart.yaml | awk -F': ' '{print $2}')" > artifact.properties
+                       '''
+                    sh "${bob2} xray-scan"
+                }
+                archiveArtifacts 'xray_report.md'
+            }
+        }
+
+        stage('Vulnerability Analysis - Anchore Inline Scan') {
+            when {
+                expression { "${params.VA_ANCHORE}" == "true" }
+            }
+            steps {
+                script {
+                    image_list = readYaml(file: 'eric-cnam-integration/requirements.yaml')
+                    list_of_images = ''
+                    for (int item = 0; item < 6; item++) {
+                        def image = "${DOCKER_REPO}" + image_list.dependencies.getAt(item).name.toString() + ':' + image_list.dependencies.getAt(item).version.toString() + ' '
+                        list_of_images = list_of_images + image
+                        sh "docker pull ${image}"
+                    }
+                    content = 'ANCHORE_IMAGES=' + list_of_images
+                    writeFile file: "artifact.properties", text: content
+                }
+                sh "${bob2} anchore-scan"
+                archiveArtifacts 'anchore-reports/*'
+            }
+        }
+
+        stage('Vulnerability Analysis - Trivy Inline Scan') {
+            when {
+                expression { "${params.VA_TRIVY}" == "true" }
+            }
+            steps {
+                script {
+                    image_list = readYaml(file: 'eric-cnam-integration/requirements.yaml')
+                    list_of_images = ''
+                    for (int item = 0; item < 6; item++) {
+                        va_docker_image = "${DOCKER_REPO}" + image_list.dependencies.getAt(item).name.toString() + ':' + image_list.dependencies.getAt(item).version.toString()
+                        content = 'VA_DOCKER_IMAGES=' + va_docker_image
+                        writeFile file: "artifact.properties", text: content
+                        sh "${bob2} trivy-scan"
+                    }
+                }
+                archiveArtifacts 'trivy/**/*'
+            }
+        }
+
+        stage('Generate Chart Version') {
+            when {
+                expression {
+                    "${params.VA_ZAP}" == "true" && "${params.VA_XRAY}" == "true" && "${params.VA_ANCHORE}" == "true" && "${params.VA_TRIVY}" == "true"
+                }
+            }
+            steps {
+                sh "sed -i 5s/-/+/ eric-cnam-integration/Chart.yaml"
+                sh '''
+                      echo "CHART_VERSION=$(grep version eric-cnam-integration/Chart.yaml | awk -F': ' '{print $2}')" > artifact.properties
+                   '''
+            }
+        }
+
+        stage('Store release artifacts') {
+            when {
+                expression {
+                    "${params.VA_ZAP}" == "true" && "${params.VA_XRAY}" == "true" && "${params.VA_ANCHORE}" == "true" && "${params.VA_TRIVY}" == "true"
+                }
+            }
+            steps {
+                sh "${bob2} release-pra"
+            }
+
+        }
+
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+    }
+}

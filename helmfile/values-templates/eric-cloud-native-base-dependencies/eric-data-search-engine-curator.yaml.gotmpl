@@ -1,0 +1,22 @@
+{{ if hasKey .Values "global" }}
+global:
+{{ .Values | get "global" | toYaml | indent 2 }}
+{{ end }}
+{{ if hasKey .Values .Release.Name }}
+{{ .Values | get .Release.Name | toYaml }}
+{{ end }}
+
+actions: |
+  1:
+    action: delete_indices
+    description: Remove logs older than 2 day
+    options:
+      disable_action: false
+      ignore_empty_list: true
+    filters:
+    - filtertype: age
+      source: name
+      direction: older
+      timestring: '%Y.%m.%d'
+      unit: days
+      unit_count: 2

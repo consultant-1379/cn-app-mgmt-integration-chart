@@ -1,0 +1,367 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: eric-cm-mediator
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: eric-cm-mediator
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-sec-certm
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-cm-mediator
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: eric-cnom-document-database-mg
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: eric-cnom-document-database-mg
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-cnom-server
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-cnom-document-database-mg
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: eric-ctrl-bro
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: eric-ctrl-bro
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-data-distributed-coordinator-ed
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-data-distributed-coordinator-ed-agent
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-data-coordinator-zk
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-data-search-engine
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-data-document-database-pg
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-data-object-storage-mn
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-lcm-container-registry
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-lcm-helm-chart-registry
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-ctrl-bro
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: eric-data-coordinator-zk
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: eric-data-coordinator-zk
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-data-coordinator-zk
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-data-message-bus-kf
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: eric-data-distributed-coordinator-ed
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: eric-data-distributed-coordinator-ed
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-sec-key-management
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-data-distributed-coordinator-ed
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-data-distributed-coordinator-ed-agent
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: eric-data-document-database-pg
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: eric-data-document-database-pg
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-ctrl-bro
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-lcm-helm-executor
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-sec-access-mgmt
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-fh-alarm-handler
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-cm-mediator
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-cm-mediator-notifier
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-data-document-database-pg
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: eric-data-message-bus-kf
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: eric-data-message-bus-kf
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-fh-alarm-handler
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-sec-sip-tls
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-cm-mediator
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-lcm-helm-executor
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-data-message-bus-kf
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: eric-data-object-storage-mn
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: eric-data-object-storage-mn
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-ccr-server
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-lcm-container-registry
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-lcm-helm-chart-registry
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-data-object-storage-mn
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: eric-data-search-engine-curator
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: eric-data-search-engine-curator
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-data-search-engine
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-data-search-engine-curator
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: eric-data-search-engine
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: eric-data-search-engine
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-data-search-engine
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-log-transformer
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: eric-fh-alarm-handler
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: eric-fh-alarm-handler
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-sec-certm
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-fh-alarm-handler
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: eric-log-transformer
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: eric-log-transformer
+  policyTypes:
+  - Ingress
+  ingress:
+  - from: []
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: eric-pm-server
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: eric-pm-server
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-sec-certm
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-pm-server
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: eric-sec-access-mgmt
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: eric-sec-access-mgmt
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-lcm-helm-executor
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: eric-sec-key-management
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: eric-sec-key-management
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-cm-mediator
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-sec-sip-tls
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-sec-certm
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-sec-key-management
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: eric-sec-ldap-server
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: eric-sec-ldap-server
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-sec-access-mgmt
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-sec-ldap-server
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: eric-sec-sip-tls
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: eric-sec-sip-tls
+  policyTypes:
+  - Ingress
+  ingress:
+  - from: []

@@ -1,0 +1,16 @@
+environments:
+  default:
+    values:
+      - ./env-profiles/hahn117.yaml
+  hahn117:
+    values:
+      - ./env-profiles/hahn117.yaml
+  hahn117-tls:
+    values:
+      - ./env-profiles/hahn117-tls.yaml
+  ci-tests:
+    values:
+      - ./env-profiles/ci-tests.yaml
+  ci:
+    values:
+      - ./env-profiles/ci.yaml

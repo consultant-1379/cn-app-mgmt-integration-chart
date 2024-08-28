@@ -1,0 +1,58 @@
+ingress:
+  hostname: ci-dashboard.cnam.hahn117.rnd.gic.ericsson.se
+
+config:
+  backend: |
+    const
+     httpsAgent = new (require('https')).Agent({ rejectUnauthorized: false }),
+     auth = {
+       username: 'CIUSERNAME',
+       password: 'CIUSERPASSWORD'
+     };
+
+    // Remember to avoid adding slash at the end of each URL
+    module.exports = {
+      port: 5000,
+      path: 'frontend',
+      updateRateSeconds: 60,
+      baselineIndexUrl: 'https://arm.sero.gic.ericsson.se/artifactory/proj-bdgs-cn-app-mgmt-drop-helm',
+      baselineChartName: 'eric-cn-app-mgmt-integration',
+
+      userAuthentication: auth,
+
+      spinnakers: [
+        {
+          name: 'cn-am-adp-staging',
+          url: 'https://spinnaker.rnd.gic.ericsson.se/?#/applications/cn-am-adp-staging/executions',
+          request: {
+            url: 'https://spinnaker-api.rnd.gic.ericsson.se/executions?pipelineConfigIds=f69d367a-b9cf-4887-8970-0bdd57e53b7c&limit=10',
+            auth,
+          },
+          metaConfig: [
+            { name: 'chart', jsonPath: '$.trigger.parameters.CHART_NAME' },
+            { name: 'version', jsonPath: '$.trigger.parameters.CHART_VERSION' },
+            { name: 'Author', jsonPath: '$.trigger.parameters.GIT_AUTHOR_EMAIL' }
+          ]
+        }
+      ],
+
+      environments: [],
+
+      componentConfiguration: {
+        'eric-lcm-helm-executor': {
+          jenkins: {
+            url: 'https://fem4s11-eiffel052.eiffel.gic.ericsson.se:8443/jenkins/view/CN-AM/job/CN-AM_Lcm-Helm-Executor_RELEASE',
+            auth,
+          },
+           sonar: {
+             url: 'https://sonarqube.lmera.ericsson.se',
+             projectId: 'eric-lcm-helm-executor'
+           },
+        },
+      }
+    };
+
+  frontend: |
+    export default {
+      title: 'CNAM CI Dashboard',
+    };

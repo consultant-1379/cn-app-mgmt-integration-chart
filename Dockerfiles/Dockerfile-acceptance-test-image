@@ -1,0 +1,49 @@
+#
+# COPYRIGHT Ericsson 2021
+#
+#
+#
+# The copyright to the computer program(s) herein is the property of
+#
+# Ericsson Inc. The programs may be used and/or copied only with written
+#
+# permission from Ericsson Inc. or in accordance with the terms and
+#
+# conditions stipulated in the agreement/contract under which the
+#
+# program(s) have been supplied.
+#
+
+FROM armdocker.rnd.ericsson.se/proj-ra-cnam/eric-lcm-sles-utils:latest
+
+ARG HELM_VERSION
+
+ADD https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz /
+RUN tar -xf helm-${HELM_VERSION}-linux-amd64.tar.gz
+
+ADD https://dl.k8s.io/release/v1.22.0/bin/linux/amd64/kubectl /
+RUN chmod +x /kubectl
+
+FROM armdocker.rnd.ericsson.se/proj-adp-cicd-drop/bob-java11mvnbuilder:latest
+
+ARG REPOSITORY
+ARG HELM_VERSION
+ARG BUILD_DATE
+
+LABEL \
+    adp.repository=$REPOSITORY \
+    adp.helm=$HELM_VERSION \
+    org.opencontainers.image.title="acceptance-test-image" \
+    org.opencontainers.image.created="$BUILD_DATE"
+
+COPY --from=0 /linux-amd64/helm /usr/local/bin/helm
+COPY --from=0 /kubectl /usr/bin/kubectl
+
+RUN mkdir -p /home/1005/.config/helm/ /.cache \
+    && chown -R 1005:994 /home/1005/ /.cache \
+    && export HELM_CACHE_HOME=/home/1005/.cache/ \
+    && export HELM_CONFIG_HOME=/home/1005/.config/helm/
+
+USER 1005
+
+CMD ["/bin/sh"]

@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values | get "eric-cloud-native-base.eric-data-document-database-pg.brAgent.backupDataModelConfig" }}
+  labels:
+     app: eric-data-document-database-pg
+     chart: eric-data-document-database-pg
+  annotations:
+     ericsson.com/product-name: "BDGS CN AM LCM"
+     ericsson.com/product-number: "CXD 111 1111"
+     ericsson.com/product-revision: "0.1.0"
+data:
+    brm_backup.yaml: |
+      backupRestoreMetadataConfig:
+          - backupType: default-db
+            username: {{ .Values | get "global.extraEnv.dbCustomUser" }}
+            database: {{ .Values | get "eric-cloud-native-base.eric-data-document-database-pg.postgresDatabase" }}
+            inOutTables: none
+          - backupType: executor-db
+            username: {{ .Values | get "global.extraEnv.dbLcmUser" }}
+            database: {{ .Values | get "eric-lcm-helm-executor.postgress.dbName" }}
+            inOutTables: none

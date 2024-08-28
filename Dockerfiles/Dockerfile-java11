@@ -1,0 +1,30 @@
+#
+# COPYRIGHT Ericsson 2021
+#
+#
+#
+# The copyright to the computer program(s) herein is the property of
+#
+# Ericsson Inc. The programs may be used and/or copied only with written
+#
+# permission from Ericsson Inc. or in accordance with the terms and
+#
+# conditions stipulated in the agreement/contract under which the
+#
+# program(s) have been supplied.
+#
+
+ARG CBO_IMAGE_URL=armdocker.rnd.ericsson.se/proj-ldc/common_base_os_release/sles
+ARG CBO_VERSION=3.20.0-25
+FROM ${CBO_IMAGE_URL}:${CBO_VERSION}
+ARG CBO_REPO=arm.rnd.ki.sw.ericsson.se/artifactory/proj-ldc-repo-rpm-local/common_base_os/sles/
+
+ARG CBO_VERSION
+ENV CURRENT_IMG_VERSION=0.1.2
+
+RUN zypper addrepo --gpgcheck-strict -f https://${CBO_REPO}${CBO_VERSION} CBO_ENV \
+    && zypper --gpg-auto-import-keys refresh \
+    && zypper refresh \
+    && zypper install -l -y java-11-openjdk \
+    && zypper rr CBO_ENV \
+    && zypper clean --all

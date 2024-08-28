@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  rules:
+    - host: {{ .Values | get "eric-lcm-helm-executor.ingress.hostname" }}
+      http:
+        paths:
+          - path: {{ .Values | get "eric-lcm-helm-executor.ingress.path" | quote }}
+            pathType: Prefix
+            backend:
+              service:
+                name: eric-lcm-helm-executor
+                port:
+                  number: 8888
+

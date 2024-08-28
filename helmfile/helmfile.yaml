@@ -1,0 +1,121 @@
+bases:
+  - repositories.yaml
+  - environments.yaml
+
+---
+
+helmDefaults:
+  wait: {{ .Values | get "global.default.wait" true }}
+  timeout: {{ .Values | get "global.default.timeout" }}
+  createNamespace: true
+
+missingFileHandler: Error
+
+---
+
+releases:
+  - name: network-policy
+    chart: ./values-templates/network-policy
+    namespace: {{ .Values | get "global.app.namespace" }}
+    installed: {{ and ( .Values | get "global.app.enabled") ( .Values | get "global.networkPolicy.enabled") }}
+  - name: configmap-eric-fh-alarm-handler
+    chart: ./values-templates/configmap-eric-fh-alarm-handler
+    namespace: {{ .Values | get "global.app.namespace" }}
+    installed: {{ and ( .Values | get "global.app.enabled") ( .Values | get "eric-cloud-native-base.eric-fh-alarm-handler.enabled") ( .Values | get "eric-cloud-native-base.enabled") }}
+  - name: secret-eric-data-distributed-coordinator-creds
+    chart: ./values-templates/secret-eric-data-distributed-coordinator-creds
+    namespace: {{ .Values | get "global.app.namespace" }}
+    installed: {{ and ( .Values | get "global.app.enabled") ( .Values | get "eric-cloud-native-base.eric-data-distributed-coordinator-ed.enabled") ( .Values | get "eric-cloud-native-base.enabled") }}
+  - name: configmap-eric-data-document-database-pg-bra
+    chart: ./values-templates/configmap-eric-data-document-database-pg-bra
+    namespace: {{ .Values | get "global.app.namespace" }}
+    installed: {{ and ( .Values | get "global.app.enabled") ( .Values | get "eric-cloud-native-base.eric-data-document-database-pg.enabled") ( .Values | get "eric-cloud-native-base.enabled") }}
+  - name: secret-eric-sec-access-mgmt
+    chart: ./values-templates/secret-eric-sec-access-mgmt
+    namespace: {{ .Values | get "global.app.namespace" }}
+    installed: {{ and ( .Values | get "global.app.enabled") ( .Values | get "eric-cloud-native-base.eric-sec-access-mgmt.enabled") }}
+  - name: secret-eric-sec-ldap-server-credentials
+    chart: ./values-templates/secret-eric-sec-ldap-server-credentials
+    namespace: {{ .Values | get "global.app.namespace" }}
+    installed: {{ and ( .Values | get "global.app.enabled") ( .Values | get "eric-sec-ldap-server.enabled") }}
+  - name: secret-eric-lcm-container-registry-creds
+    chart: ./values-templates/secret-eric-lcm-container-registry-creds
+    namespace: {{ .Values | get "global.app.namespace" }}
+    installed: {{ and ( .Values | get "global.app.enabled") ( .Values | get "eric-lcm-container-registry.enabled") }}
+  - name: secret-eric-lcm-docker-registry-tls-certs
+    chart: ./values-templates/secret-eric-lcm-docker-registry-tls-certs
+    namespace: {{ .Values | get "global.app.namespace" }}
+    installed: {{ and ( .Values | get "global.app.enabled") ( .Values | get "eric-lcm-container-registry.enabled") ( .Values | get "eric-lcm-container-registry.ingress.generateSelfSignedCerts") }}
+  - name: secret-eric-data-document-database-pg-creds
+    chart: ./values-templates/secret-eric-data-document-database-pg-creds
+    namespace: {{ .Values | get "global.app.namespace" }}
+    installed: {{ and ( .Values | get "global.app.enabled") ( .Values | get "eric-cloud-native-base.eric-data-document-database-pg.enabled") ( .Values | get "eric-cloud-native-base.enabled") }}
+  - name: secret-eric-data-object-storage-mn
+    chart: ./values-templates/secret-eric-data-object-storage-mn
+    namespace: {{ .Values | get "global.app.namespace" }}
+    installed: {{ and ( .Values | get "global.app.enabled") ( .Values | get "eric-cloud-native-base.eric-data-object-storage-mn.enabled") ( .Values | get "eric-cloud-native-base.enabled") }}
+  - name: secret-eric-data-object-storage-mn-bra-cert
+    chart: ./values-templates/secret-eric-data-object-storage-mn-bra-cert
+    namespace: {{ .Values | get "global.app.namespace" }}
+    installed: {{ and ( .Values | get "global.app.enabled") ( .Values | get "eric-cloud-native-base.eric-data-object-storage-mn.enabled") ( .Values | get "eric-cloud-native-base.eric-data-object-storage-mn.brAgent.enabled") ( .Values | get "global.security.tls.enabled") ( .Values | get "eric-cloud-native-base.enabled") }}
+  - name: secret-eric-lcm-helm-executor-container-creds
+    chart: ./values-templates/secret-eric-lcm-helm-executor-container-creds
+    namespace: {{ .Values | get "global.app.namespace" }}
+    installed: {{ and ( .Values | get "global.app.enabled") ( .Values | get "eric-lcm-helm-executor.enabled") }}
+  - name: secret-eric-docker-creds
+    chart: ./values-templates/secret-eric-docker-creds
+    namespace: {{ .Values | get "global.app.namespace" }}
+    installed: {{ and ( .Values | get "global.app.enabled") ( .Values | get "eric-lcm-helm-executor.enabled") }}
+  - name: eric-cloud-native-base
+    chart: {{ .Values | get "repository" "adp-cncs" }}/eric-cloud-native-base
+    version: 143.2.0
+    namespace: {{ .Values | get "global.app.namespace" }}
+    installed: {{ and ( .Values | get "global.app.enabled") ( .Values | get "eric-cloud-native-base.enabled") }}
+    values:
+      - "./values-templates/eric-cloud-native-base.yaml.gotmpl"
+  - name: eric-lcm-container-registry
+    chart: {{ .Values | get "repository" "adp" }}/eric-lcm-container-registry
+    version: 8.2.0+18
+    namespace: {{ .Values | get "global.app.namespace" }}
+    installed: {{ and ( .Values | get "global.app.enabled") ( .Values | get "eric-lcm-container-registry.enabled") }}
+    values:
+      - "./values-templates/eric-lcm-container-registry.yaml.gotmpl"
+  - name: eric-lcm-helm-chart-registry
+    chart: {{ .Values | get "repository" "adp" }}/eric-lcm-helm-chart-registry
+    version: 7.2.0+11
+    namespace: {{ .Values | get "global.app.namespace" }}
+    installed: {{ and ( .Values | get "global.app.enabled") ( .Values | get "eric-lcm-helm-chart-registry.enabled") }}
+    values:
+      - "./values-templates/eric-lcm-helm-chart-registry.yaml.gotmpl"
+  - name: eric-lcm-helm-executor
+    chart: {{ .Values | get "repository" "cn-app" }}/eric-lcm-helm-executor
+    version: 0.8.5-6
+    namespace: {{ .Values | get "global.app.namespace" }}
+    installed: {{ and ( .Values | get "global.app.enabled") ( .Values | get "eric-lcm-helm-executor.enabled") }}
+    values:
+      - "./values-templates/eric-lcm-helm-executor.yaml.gotmpl"
+  - name: eric-sec-ldap-server
+    chart: {{ .Values | get "repository" "adp" }}/eric-sec-ldap-server
+    version: 11.3.0+23
+    namespace: {{ .Values | get "global.app.namespace" }}
+    installed: {{ and ( .Values | get "global.app.enabled") ( .Values | get "eric-sec-ldap-server.enabled") }}
+    values:
+      - "./values-templates/eric-sec-ldap-server.yaml.gotmpl"
+  - name: eric-cnom-server
+    chart: {{ .Values | get "repository" "pc-rs-rel" }}/eric-cnom-server
+    version: 2.13.2+13
+    namespace: {{ .Values | get "global.app.namespace" }}
+    installed: {{ and ( .Values | get "global.app.enabled") ( .Values | get "eric-cnom-server.enabled") }}
+    values:
+      - "./values-templates/eric-cnom-server.yaml.gotmpl"
+  - name: eric-cnom-document-database-mg
+    chart: {{ .Values | get "repository" "pc-rel" }}/eric-cnom-document-database-mg
+    version: 1.7.0+31
+    namespace: {{ .Values | get "global.app.namespace" }}
+    installed: {{ and ( .Values | get "global.app.enabled") ( .Values | get "eric-cnom-document-database-mg.enabled") }}
+    values:
+      - "./values-templates/eric-cnom-document-database-mg.yaml.gotmpl"
+  - name: ci-eric-lcm-helm-executor-ingress
+    chart: ./ci-extra-kind/hfe-ingress
+    namespace: {{ .Values | get "global.app.namespace" }}
+    installed: {{ and ( .Values | get "global.app.enabled") ( .Values | get "eric-lcm-helm-executor.ingress.enabled") }}

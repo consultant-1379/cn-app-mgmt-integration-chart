@@ -1,0 +1,22 @@
+Ericsson CN APP MGMT Integration Chart
+==================================
+
+Installs following components
+-----------------------------
+#{{- range $dependency := $.Chart.Dependencies }}
+#* {{ $dependency.Name }}-{{ $dependency.Version }}
+#{{- end }}
+
+Uninstall/delete steps
+----------------------
+  - Delete the helm installation
+
+      helm delete {{ .Release.Name }}
+
+  - There are underlying kubernetes objects(related to secret and volumes), which needs to be manually deleted
+
+      kubectl get secret,pvc,pv -n {{ .Release.Namespace }}
+
+  - Then delete the respective component from above list
+
+      kubectl delete <k8 object type>/<k8 object name> -n {{ .Release.Namespace }}

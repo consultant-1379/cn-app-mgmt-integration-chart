@@ -1,0 +1,26 @@
+dependencies:
+- condition: eric-lcm-helm-executor.enabled
+  name: eric-lcm-helm-executor
+  repository: https://arm.sero.gic.ericsson.se/artifactory/proj-bdgs-cn-app-mgmt-drop-helm
+  version: 0.8.5-6
+- condition: eric-cnom-server.enabled
+  name: eric-cnom-server
+  repository: https://arm.sero.gic.ericsson.se/artifactory/proj-pc-rs-released-helm
+  version: 2.13.2+13
+- condition: eric-cnom-document-database-mg.enabled
+  name: eric-cnom-document-database-mg
+  repository: https://arm.sero.gic.ericsson.se/artifactory/proj-pc-released-helm
+  version: 1.7.0+31
+- condition: eric-lcm-container-registry.enabled
+  name: eric-lcm-container-registry
+  repository: https://arm.sero.gic.ericsson.se/artifactory/proj-adp-gs-all-helm/
+  version: 8.2.0+18
+- condition: eric-lcm-helm-chart-registry.enabled
+  name: eric-lcm-helm-chart-registry
+  repository: https://arm.sero.gic.ericsson.se/artifactory/proj-adp-gs-all-helm/
+  version: 7.2.0+11
+- alias: eric-data-storage
+  condition: eric-data-storage.enabled
+  name: eric-data-object-storage-mn
+  repository: https://arm.sero.gic.ericsson.se/artifactory/proj-adp-eric-data-object-storage-mn-released-helm/
+  version: 1.31.0+5

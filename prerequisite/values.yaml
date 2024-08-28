@@ -1,0 +1,520 @@
+#================================
+#Value for duplicate variables
+BRO_BRA_STATE: &BRO_BRA_STATE true
+storageClass: &storageClass "network-block"
+document-database-pg-host: &databasePgHost "eric-data-document-database-pg"
+document-database-pg-credentials: &databasePgCred "eric-data-document-database-pg-credentials"
+document-database-pg-dbname: &pgdbname "test-pg-db"
+#================================
+global:
+  networkPolicy:
+    enabled: false
+  registry:
+    imagePullPolicy: "Always"
+    pullSecret: "regcred"
+  pullSecret: "regcred"
+  timezone: "UTC"
+  security:
+    policyBinding:
+      create: true
+    tls:
+      enabled: false
+
+eric-ctrl-bro:
+  enabled: *BRO_BRA_STATE
+  kafka:
+    enabled: false
+  persistence:
+    persistentVolumeClaim:
+      storageClassName: *storageClass
+      size: "15Gi"
+  bro:
+    enableNotifications: true
+    enableAgentDiscovery: true
+  service:
+    endpoints:
+      broToAgent:
+        tls:
+          enforced: optional
+          verifyClientCertificate: optional
+      restActions:
+        tls:
+          enforced: optional
+
+eric-data-coordinator-zk:
+  enabled: true
+  replicaCount: 1
+  imagePullPolicy: "IfNotPresent"
+  heap: "128M"
+  persistantVolumeClaim:
+    enabled: false
+  persistence:
+    persistentVolumeClaim:
+      storageClassName: *storageClass
+      enabled: true
+  brAgent:
+    enabled: *BRO_BRA_STATE
+  resources:
+    datacoordinatorzk:
+      requests:
+        cpu: "1"
+        memory: "2Gi"
+      limits:
+        cpu: "2"
+        memory: "4Gi"
+        ephemeral-storage: "5Gi"
+
+eric-data-distributed-coordinator-ed:
+  enabled: true
+  secret:
+    name: "eric-data-distributed-coordinator-creds"
+    value: "REPLACEPASSWD"
+  pods:
+    dced:
+      replicaCount: 1
+  updateStrategy:
+    type: "RollingUpdate"
+  imagePullPolicy: "IfNotPresent"
+  persistence:
+    persistentVolumeClaim:
+      size: "1Gi"
+      storageClassName: *storageClass
+      enabled: true
+  resources:
+    etcd:
+      requests:
+        cpu: "400m"
+        memory: "400Mi"
+      limits:
+        cpu: "1"
+        memory: "1Gi"
+    brAgent:
+      limits:
+        cpu: "1"
+        memory: "2Gi"
+      requests:
+        cpu: "400m"
+        memory: "400Mi"
+  brAgent:
+    enabled: *BRO_BRA_STATE
+    brLabelValue: eric-data-distributed-coordinator-ed-bra
+    logLevel: "debug"
+    properties:
+      applicationProperties: |-
+        dced.agent.restore.type=overwrite
+        dced.excluded.paths=/shelter,/kms/core/lock
+
+eric-data-document-database-pg:
+  enabled: true
+  postgresDatabase: *pgdbname
+  credentials:
+    kubernetesSecretName: *databasePgCred
+    keyForUserId: "custom-user"
+    keyForUserPw: "custom-pwd"
+    keyForSuperPw: "super-pwd"
+    keyForMetricsPw: "metrics-pwd"
+    keyForReplicaId: "replica-user"
+    keyForReplicaPw: "replica-pwd"
+  highAvailability:
+    synchronousModeEnabled: false
+    replicaCount: 1
+  persistentVolumeClaim:
+    storageClassName: *storageClass
+  brAgent:
+    enabled: *BRO_BRA_STATE
+    logicalDBBackupEnable: false
+    backupDataModelConfig: "eric-data-document-database-pg-brm-conf"
+    backupTypeList:
+      - default-db
+      - executor-db
+    RootLogLevel: "debug"
+    PGAgentLogLevel: "debug"
+
+eric-data-message-bus-kf:
+  enabled: true
+  replicaCount: 1
+  imagePullPolicy: "IfNotPresent"
+  persistentVolumeClaim:
+    enabled: false
+  persistence:
+    persistentVolumeClaim:
+      size: "5Gi"
+      storageClassName: *storageClass
+      enabled: true
+  readynessProbeTimeoutSeconds: 10
+  configurationOverrides:
+    ssl.enabled.protocols: "TLSv1.2"
+  service:
+     endpoints:
+       messagebuskf:
+          sasl:
+             enforced: "optional"
+          tls:
+             enforced: "optional"
+             verifyClientCertificate: "optional"
+             servcertTimeToLive: 3600
+             servcertRenewalLeadTime: 3000
+       dataCoordinator:
+          tls:
+             enforced: "optional"
+             clientTimeToLive: 3600
+             clientRenewalLeadTime: 3000
+  security:
+    tls:
+      messagebuskf:
+        port: 9093
+        provider: "sip-tls"
+
+eric-cm-mediator:
+  enabled: true
+  replicaCount: 1
+  updateStrategy:
+    type: "RollingUpdate"
+    rollingUpdate:
+      maxUnavailable: "50%"
+      maxSurge: "50%"
+  cmkey:
+    enable: true
+  backend:
+    dbname: *pgdbname
+    hostname: *databasePgHost
+  kafka:
+    hostname: "eric-data-message-bus-kf"
+  credentials:
+    kubernetesSecretName: *databasePgCred
+    keyForUserId: "custom-user"
+    keyForUserPw: "custom-pwd"
+  service:
+    type: "ClusterIP"
+
+eric-log-transformer:
+  enabled: true
+  searchengine:
+    host: "eric-data-search-engine"
+    port: 9200
+    logplaneConfig:
+      - field: "[facility]"
+        value: "log audit"
+        newLogplane: "auditlog"
+      - field: "[extra_data][asi][log_plane]"
+        value: "alarm"
+        newLogplane: "adp-app-asi-logs"
+  replicaCount: 1
+  updateStrategy:
+    rollingUpdate:
+      maxSurge: "25%"
+      maxUnavailable: "25%"
+    type: "RollingUpdate"
+  imageCredentials:
+    pullPolicy: "IfNotPresent"
+  logLevel: "error"
+  resources:
+    logtransformer:
+      requests:
+        cpu: "250m"
+        memory: "2048Mi"
+      limits:
+        cpu: "500m"
+        memory: "2048Mi"
+  jvmHeap: "1596m"
+  config:
+    adpJson:
+      transformation:
+        enabled: true
+
+eric-pm-server:
+  enabled: true
+  rbac:
+    appMonitoring:
+      configFileCreate: true
+      enabled: true
+  server:
+    baseURL: "metrics/viewer/"
+    prefixURL: "metrics/viewer/"
+    persistentVolume:
+      enabled: true
+      storageClass: *storageClass
+  resources:
+    server:
+      requests:
+        cpu: "250m"
+        memory: "512Mi"
+      limits:
+        cpu: "2"
+        memory: "2048Mi"
+  service:
+    endpoints:
+      scrapeTargets:
+        tls:
+          enforced: "optional"
+      reverseproxy:
+        tls:
+          verifyClientCertificate: "optional"
+  config:
+    recording_rules: {}
+
+eric-sec-access-mgmt:
+  enabled: true
+  statefulset:
+    adminSecret: "eric-sec-access-mgmt-creds"
+    userkey: "kcadminid"
+    passwdkey: "kcpasswd"
+  http:
+    hostValidation:
+      allowedHosts: ""
+  ingress:
+    enabled: false
+    hostname: ""
+    path: /auth
+    tls:
+      enabled: true
+      passthrough : false
+      existingSecret: ""
+    certificates:
+      asymmetricKeyCertificateName: "oauth2-server/oauth2-server"
+  persistence:
+    dbVendor: "POSTGRES"
+    dbName: *pgdbname
+    dbHost: *databasePgHost
+    dbPort: 5432
+    dbsecret: *databasePgCred
+    dbUserkey: "custom-user"
+    dbPasswdkey: "custom-pwd"
+  keyManagement:
+    server: "eric-sec-key-management"
+    port: 8200
+eric-sec-certm:
+  enabled: true
+
+eric-sec-key-management:
+  enabled: true
+  replicas: 1
+  updateStrategy:
+    type: "RollingUpdate"
+  imageCredentials:
+    registry:
+      imagePullPolicy: "IfNotPresent"
+  persistence:
+    type: "etcd"
+    etcd:
+      tls:
+        enabled: true
+  service:
+    tls:
+      enabled: true
+  shelter:
+    enabled: true
+  resources:
+    vault:
+      requests:
+        cpu: "100m"
+        memory: "400Mi"
+      limits:
+        cpu: "300m"
+        memory: "1200Mi"
+
+eric-sec-sip-tls:
+  enabled: true
+  updateStrategy:
+    type: "RollingUpdate"
+  logLevel: "info"
+  etcd:
+    hostname: "eric-data-distributed-coordinator-ed"
+  kafka:
+    hostname: "eric-data-message-bus-kf"
+    port: 9093
+    tls:
+      enabled: true
+      verifyHostname: true
+  replicaCount: 1
+  resources:
+    sip:
+      limits:
+        cpu: "3000m"
+        memory: "400Mi"
+      requests:
+        cpu: "100m"
+        memory: "200Mi"
+  imageCredentials:
+    registry:
+      imagePullPolicy: IfNotPresent
+  keyManagement:
+    serviceAccountNameForCredentials: eric-sec-key-management-admin
+    hostname: eric-sec-key-management
+    port: 8210
+
+eric-data-search-engine:
+  enabled: true
+  autoSetRequiredWorkerNodeSysctl: true
+  storage:
+    repository:
+      enabled: true
+      storageClass: *storageClass
+      storageAllocation: "30Gi"
+  imageCredentials:
+    searchengine:
+      repoPath: "proj-adp-log-drop"
+      registry:
+        imagePullPolicy: "Always"
+        url: "armdocker.rnd.ericsson.se"
+  persistence:
+    storageClass: *storageClass
+    data:
+      persistentVolumeClaim:
+        size: "20Gi"
+        storageClassName: *storageClass
+    backup:
+      persistentVolumeClaim:
+        size: "30Gi"
+        storageClassName: *storageClass
+    master:
+      persistentVolumeClaim:
+        storageClassName: *storageClass
+  replicaCount:
+    ingest: 1
+    master: 1
+    data: 1
+  resources:
+    bragent:
+      limits:
+        cpu: "500m"
+        memory: "1Gi"
+      requests:
+        cpu: "500m"
+        memory: "1Gi"
+    data:
+      limits:
+        cpu: "500m"
+        memory: "2Gi"
+      requests:
+        cpu: "500m"
+        memory: "2Gi"
+    ingest:
+      limits:
+        cpu: "500m"
+        memory: "1Gi"
+      requests:
+        cpu: "500m"
+        memory: "1Gi"
+    master:
+      limits:
+        cpu: "500m"
+        memory: "1Gi"
+      requests:
+        cpu: "500m"
+        memory: "1Gi"
+
+eric-data-search-engine-curator:
+  enabled: true
+  imageCredentials:
+    curator:
+      repoPath: "proj-adp-log-drop"
+      registry:
+        imagePullPolicy: "Always"
+        url: "armdocker.rnd.ericsson.se"
+  cronjob:
+    curator:
+      enabled: true
+      schedule: "0 1 * * *"
+      successfulJobHistoryLimit: "1"
+      failedJobHistoryLimit: "3"
+  actions: |
+    1:
+      action: delete_indices
+      description: Remove logs older than 2 day
+      options:
+        disable_action: false
+        ignore_empty_list: true
+      filters:
+      - filtertype: age
+        source: name
+        direction: older
+        timestring: '%Y.%m.%d'
+        unit: days
+        unit_count: 2
+
+eric-fh-alarm-handler:
+  enabled: false
+  replicaCount: 1
+  updateStrategy:
+    type: "RollingUpdate"
+    rollingUpdate:
+      maxUnavailable: "50%"
+      maxSurge: "50%"
+  alarmhandler:
+    configStore: "cmm"
+    configmap:
+      faultmappings: "eric-bss-bam-integration-faultmappings"
+    logFormat: "adpjson"
+    jobs:
+      createAHTopics: true
+      overrideTopicConfig: true
+    fi:
+      topic:
+        replicationFactor: 1
+    asi:
+      topic:
+        partitions: 1
+        replicationFactor: 1
+  backend:
+    type: "postgres"
+    hostname: *databasePgHost
+    dbname: *pgdbname
+  credentials:
+    kubernetesSecretName: *databasePgCred
+    keyForUserId: "custom-user"
+    keyForUserPw: "custom-pwd"
+  imageCredentials:
+    registry:
+    repoPathKafka: "proj-adp-message-bus-kf-drop"
+  redis:
+    asi:
+      writerEnabled: false
+    acl:
+      enabled: false
+  images:
+    eric-fh-alarm-handler:
+      name: "eric-fh-alarm-handler"
+    topic-creator:
+      name: "eric-fh-alarm-handler-topic-creator"
+    logshipper:
+      name: "eric-log-shipper"
+    ericsecoauthsap:
+      name: "eric-sec-authorization-proxy-oauth2-sap"
+    ericsecoauthproxy:
+      name: "eric-sec-authorization-proxy-oauth2"
+  resources:
+    alarmhandler:
+      requests:
+        cpu: "250m"
+        memory: "384Mi"
+      limits:
+        cpu: "500m"
+        memory: "512Mi"
+
+eric-data-object-storage-mn:
+  enabled: false
+eric-fh-alarm-handler-db-pg:
+  enabled: false
+eric-sec-access-mgmt-db-pg:
+  enabled: false
+eric-cm-mediator-db-pg:
+  enabled: false
+eric-lm-combined-server-db-pg:
+  enabled: false
+eric-lm-combined-server-db-pg:
+  enabled: false
+eric-lm-combined-server:
+  enabled: false
+eric-fh-snmp-alarm-provider:
+  enabled: false
+eric-odca-diagnostic-data-collector:
+  enabled: false
+eric-log-shipper:
+  enabled: false
+eric-dst-agent:
+  enabled: false
+eric-dst-collector:
+  enabled: false
+eric-tm-ingress-controller-cr:
+  enabled: false

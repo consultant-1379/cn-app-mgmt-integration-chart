@@ -1,0 +1,9 @@
+{{- define "eric-cn-app-mgmt-integration.labels" }}
+app.kubernetes.io/name: {{ template "eric-cn-app-mgmt-integration.name" . }}
+app.kubernetes.io/version: {{ template "eric-cn-app-mgmt-integration.version" . }}
+app.kubernetes.io/instance: {{ .Release.Name | quote }}
+app: {{ template "eric-cn-app-mgmt-integration.name" . }}
+chart: {{ template "eric-cn-app-mgmt-integration.chart" . }}
+release: {{ .Release.Name | quote }}
+heritage: {{ .Release.Service | quote }}
+{{- end}}

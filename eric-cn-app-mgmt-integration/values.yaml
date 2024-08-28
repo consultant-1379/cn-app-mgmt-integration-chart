@@ -1,0 +1,183 @@
+#================================
+#Value for duplicate variables
+storageClass: &storageClass "network-block"
+object-storage-mn-credentials: &objectStorageMnCred "eric-data-object-storage-mn"
+document-database-pg-host: &databasePgHost "eric-data-document-database-pg"
+document-database-pg-credentials: &databasePgCred "eric-data-document-database-pg-credentials"
+eric-lcm-db-user-name: &dbLcmUser "customname"
+document-database-pg-dbname: &pgdbname "executor-db"
+container_cred_id: &container_cred_id "container_cred_id"
+container_cred_pass: &container_cred_pass "container_cred_pass"
+container_url: &container_url ""
+#================================
+global:
+  networkPolicy:
+    enabled: false
+  registry:
+    imagePullPolicy: "Always"
+    pullSecret: "regcred"
+  pullSecret: "regcred"
+  timezone: "UTC"
+  security:
+    policyBinding:
+      create: true
+    tls:
+      enabled: false
+  extraEnv:
+    container_cred_id: *container_cred_id
+    container_cred_pass: *container_cred_pass
+  adpBR:
+    brLabelKey: adpbrlabelkey
+rstate: "RSTATE"
+nameOverride: ""
+fullnameOverride: ""
+
+eric-lcm-helm-executor:
+  enabled: true
+  container-registry:
+    url: *container_url
+    credentials:
+      kubernetesSecretName: "eric-lcm-helm-executor-docker-creds"
+      keyForUserId: *container_cred_id
+      keyForUserPw: *container_cred_pass
+  helm-registry:
+    service: "eric-lcm-helm-chart-registry"
+    externalPort: 8080
+    name: "internal"
+    credentials:
+      kubernetesSecretName: "eric-lcm-helm-chart-registry"
+      keyForUserId: "BASIC_AUTH_USER"
+      keyForUserPw: "BASIC_AUTH_PASS"
+      #Username for helm registry auth is mandatory in case MTLS enable (global.security.tls.enable=true).
+      #Necessary for generate auth certificate with correct CN.
+      username: ""
+  ccr:
+    enable: false
+    hostname: "eric-ccr-server"
+  postgress:
+    service: *databasePgHost
+    dbName: *pgdbname
+    credentials:
+      kubernetesSecretName: *databasePgCred
+      keyForUserId: "custom-user"
+      keyForUserPw: "custom-pwd"
+      keyForSuperPw: "super-pwd"
+      dbLCMUsername: *dbLcmUser
+  replicaCount: 2
+  updateStrategy:
+    type: "RollingUpdate"
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  ingress:
+    enabled: false
+    hostname: ""
+    port: 80
+    ingressClass:
+    tls:
+      passthrough : false
+      secretname: "eric-lcm-helm-executor-tls-secret"
+
+eric-lcm-container-registry:
+  enabled: true
+  ingress:
+    enabled: true
+    useHttpProxy: false
+    hostname: *container_url
+    generateSelfSignedCerts: false
+    tls:
+      secretName: "eric-container-registry-tls-secret"
+  registry:
+    users:
+      secret: "container-registry-users-secret"
+      name: *container_cred_id
+      password: *container_cred_pass
+    storage:
+      s3:
+        enabled: true
+        authSecret: *objectStorageMnCred
+        authSecretMapping:
+          REGISTRY_STORAGE_S3_ACCESSKEY: accesskey
+          REGISTRY_STORAGE_S3_SECRETKEY: secretkey
+        host: "eric-data-storage"
+  brAgent:
+    enabled: false
+  ingress:
+    enabled: false
+    hostname: "replace-host-name-for-ingress"
+    generateSelfSignedCerts: false
+    useHttpProxy: false
+    tls:
+      secretName: "eric-container-registry-tls-secret"
+  persistence:
+    enabled: false
+
+eric-lcm-helm-chart-registry:
+  enabled: true
+  env:
+    secret:
+      BASIC_AUTH_USER: "replace-username"
+      BASIC_AUTH_PASS: "replace-password"
+    s3:
+      enabled: true
+      host: "eric-data-storage"
+    s3Secret: *objectStorageMnCred
+  persistentVolumeClaim:
+    enabled: false
+  ingress:
+    enabled: true
+    generateSelfSignedCerts: false
+    hostname: "replace-host-name-for-ingress"
+    useHttpProxy: false
+    tls:
+      secretName: "eric-helm-chart-registry-tls-secret"
+  brAgent:
+    enabled: false
+
+eric-cnom-server:
+  enabled: true
+  imageCredentials:
+    pullSecret: "regcred"
+  ingress:
+    enabled: false
+    certificates:
+      enabled: false
+  searchEngine:
+    tls:
+      enabled: false
+  features:
+    statusOverview: true
+    alarmViewer: true
+    centralConfigurationRepository: true
+    logViewer: true
+    nrfProvisionUeGroupProfile: false
+    nrfProvisionUeIndividualProfile: false
+    nrfProvisionNfProfile: false
+    nrfProvisionNrfAddress: false
+    nssfProvision: false
+
+eric-cnom-document-database-mg:
+  enabled: true
+  imageCredentials:
+    pullPolicy: "Always"
+    registry:
+      pullSecret: "regcred"
+
+eric-data-storage:
+  enabled: true
+  credentials:
+    kubernetesSecretName: *objectStorageMnCred
+  autoEncryption:
+    enabled: false
+  brAgent:
+    enabled: false
+    logLevel: "debug"
+    brLabelKey: adpbrlabelkey
+    brLabelValue: eric-data-storage
+    backupTypeList:
+      - all-application-data
+    properties:
+      backup_data_path: "cr-registry, hcr-registry"
+    tls:
+      paths:
+        clientCerts: /etc/tls/cert/client

@@ -1,0 +1,32 @@
+{{ if hasKey .Values "global" }}
+global:
+{{ .Values | get "global" | toYaml | indent 2 }}
+{{ end }}
+{{ if hasKey .Values .Release.Name }}
+{{ .Values | get .Release.Name | toYaml }}
+{{ end }}
+
+eric-fh-alarm-handler-db-pg:
+  enabled: false
+eric-sec-access-mgmt-db-pg:
+  enabled: false
+eric-cm-mediator-db-pg:
+  enabled: false
+eric-lm-combined-server-db-pg:
+  enabled: false
+eric-lm-combined-server-db-pg:
+  enabled: false
+eric-lm-combined-server:
+  enabled: false
+eric-fh-snmp-alarm-provider:
+  enabled: false
+eric-odca-diagnostic-data-collector:
+  enabled: false
+eric-log-shipper:
+  enabled: false
+eric-dst-agent:
+  enabled: false
+eric-dst-collector:
+  enabled: false
+eric-tm-ingress-controller-cr:
+  enabled: false

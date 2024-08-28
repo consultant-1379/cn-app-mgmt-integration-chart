@@ -1,0 +1,74 @@
+storageClass: &storageClass "STORAGE_CLASS_VAR"
+
+eric-data-document-database-pg:
+  persistentVolumeClaim:
+    storageClassName: *storageClass
+
+eric-data-search-engine:
+  storage: # Will be depraceted by SE 2020-09-17
+    repository:
+      storageClass: *storageClass
+  persistence:
+    storageClass: *storageClass # Will be depraceted by SE 2020-09-17
+    data:
+      persistentVolumeClaim:
+        storageClassName: *storageClass
+    backup:
+      persistentVolumeClaim:
+        storageClassName: *storageClass
+    master:
+      persistentVolumeClaim:
+        storageClassName: *storageClass
+
+eric-data-distributed-coordinator-ed:
+  persistentVolumeClaim:
+    etcd:
+      storageClassName: *storageClass
+  persistence:
+    persistentVolumeClaim:
+      storageClassName: *storageClass
+
+eric-sec-key-management:
+  persistence:
+    pvc:
+      storageClassName: *storageClass
+
+eric-data-coordinator-zk:
+  persistantVolumeClaim:
+    storageClassName: *storageClass
+  persistence:
+    persistentVolumeClaim:
+      storageClassName: *storageClass
+
+eric-data-message-bus-kf:
+  persistentVolumeClaim:
+    storageClassName: *storageClass
+  persistence:
+    persistentVolumeClaim:
+      storageClassName: *storageClass
+
+eric-pm-server:
+  server:
+    persistentVolume:
+      storageClass: *storageClass
+
+eric-idam-database-pg:
+  persistentVolumeClaim:
+    storageClassName: *storageClass
+
+eric-fm-database-pg:
+  persistentVolumeClaim:
+    storageClassName: *storageClass
+
+eric-cm-database-pg:
+  persistentVolumeClaim:
+    storageClassName: *storageClass
+
+eric-ctrl-bro:
+  persistence:
+   persistentVolumeClaim:
+    storageClassName: *storageClass
+
+eric-lm-database-pg:
+  persistentVolumeClaim:
+    storageClassName: *storageClass

@@ -1,0 +1,49 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: network-policy-eric-ctrl-bro
+  labels:
+     app.kubernetes.io/name: eric-ctrl-bro
+     chart: network-policy
+  annotations:
+     ericsson.com/product-name: "BDGS CN AM LCM"
+     ericsson.com/product-number: "CXD 111 1111"
+     ericsson.com/product-revision: "0.2.0"
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: eric-ctrl-bro
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-data-distributed-coordinator-ed
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-data-distributed-coordinator-ed-agent
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-data-coordinator-zk
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-data-search-engine
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-data-document-database-pg
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-data-object-storage-mn
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-lcm-container-registry
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-lcm-helm-chart-registry
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: eric-ctrl-bro
+    - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: eric-lcm-helm-executor
